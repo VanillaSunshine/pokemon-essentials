@@ -8,14 +8,6 @@ def pbSafeLoad(file)
   return load_data(file)
 end
 
-def pbLoadRxData(file) # :nodoc:
-  if $RPGVX
-    return load_data(file+".rvdata")
-  else
-    return load_data(file+".rxdata")
-  end
-end
-
 def pbChooseLanguage
   commands=[]
   for lang in LANGUAGES
@@ -23,25 +15,6 @@ def pbChooseLanguage
   end
   return pbShowCommands(nil,commands)
 end
-
-if !respond_to?("pbSetResizeFactor")
-  def pbSetResizeFactor(dummy,dummy2=false); end
-  def setScreenBorderName(border); end
-
-  $ResizeFactor    = 1.0
-  $ResizeFactorMul = 100
-  $ResizeOffsetX   = 0
-  $ResizeOffsetY   = 0
-  $ResizeFactorSet = false
-
-  module Graphics
-    def self.snap_to_bitmap; return nil; end
-  end
-end
-
-
-#############
-#############
 
 
 def pbSetUpSystem
@@ -66,24 +39,15 @@ def pbSetUpSystem
     game_system   = Game_System.new
     pokemonSystem = PokemonSystem.new
   end
-  if !$INEDITOR
+  if $INEDITOR
+    pbSetResizeFactor(1.0)
+  else
     $game_system   = game_system
     $PokemonSystem = pokemonSystem
-    pbSetResizeFactor([$PokemonSystem.screensize,3].min)
-  else
-    pbSetResizeFactor(1.0)
+    pbSetResizeFactor([$PokemonSystem.screensize, 4].min)
   end
   # Load constants
-  begin
-    consts = pbSafeLoad("Data/Constants.rxdata")
-    consts = [] if !consts
-  rescue
-    consts = []
-  end
-  for script in consts
-    next if !script
-    eval(Zlib::Inflate.inflate(script[2]),nil,script[1])
-  end
+  GameData.load_all
   if LANGUAGES.length>=2
     pokemonSystem.language = pbChooseLanguage if !havedata
     pbLoadMessages("Data/"+LANGUAGES[pokemonSystem.language][1])
@@ -93,12 +57,10 @@ end
 def pbScreenCapture
   t = pbGetTimeNow
   filestart = t.strftime("[%Y-%m-%d] %H_%M_%S")
-  filestart = sprintf("%s.%03d",filestart,(t.to_f-t.to_i)*1000)   # milliseconds
-  capturefile = RTP.getSaveFileName(sprintf("%s.png",filestart))
-  if capturefile && safeExists?("rubyscreen.dll")
-    Graphics.snap_to_bitmap(false).saveToPng(capturefile)
-    pbSEPlay("Pkmn exp full") if FileTest.audio_exist?("Audio/SE/Pkmn exp full")
-  end
+  filestart = sprintf("%s.%03d", filestart, (t.to_f - t.to_i) * 1000)   # milliseconds
+  capturefile = RTP.getSaveFileName(sprintf("%s.png", filestart))
+  Graphics.snap_to_bitmap.save_to_png(capturefile)
+  pbSEPlay("Pkmn exp full") if FileTest.audio_exist?("Audio/SE/Pkmn exp full")
 end
 
 def pbDebugF7
@@ -131,7 +93,3 @@ module Input
     end
   end
 end
-
-
-
-pbSetUpSystem

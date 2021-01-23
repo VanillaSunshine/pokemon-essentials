@@ -1,3 +1,6 @@
+#===============================================================================
+#
+#===============================================================================
 class PokemonPauseMenu_Scene
   def pbStartScene
     @viewport = Viewport.new(0,0,Graphics.width,Graphics.height)
@@ -78,8 +81,9 @@ class PokemonPauseMenu_Scene
   def pbRefresh; end
 end
 
-
-
+#===============================================================================
+#
+#===============================================================================
 class PokemonPauseMenu
   def initialize(scene)
     @scene = scene
@@ -128,7 +132,7 @@ class PokemonPauseMenu
     elsif pbInBugContest?
       if pbBugContestState.lastPokemon
         @scene.pbShowInfo(_INTL("Caught: {1}\nLevel: {2}\nBalls: {3}",
-           PBSpecies.getName(pbBugContestState.lastPokemon.species),
+           pbBugContestState.lastPokemon.speciesName,
            pbBugContestState.lastPokemon.level,
            pbBugContestState.ballcount))
       else
@@ -184,14 +188,14 @@ class PokemonPauseMenu
           return
         end
       elsif cmdBag>=0 && command==cmdBag
-        item = 0
+        item = nil
         pbFadeOutIn {
           scene = PokemonBag_Scene.new
           screen = PokemonBagScreen.new(scene,$PokemonBag)
           item = screen.pbStartScreen
-          (item>0) ? @scene.pbEndScene : @scene.pbRefresh
+          (item) ? @scene.pbEndScene : @scene.pbRefresh
         }
-        if item>0
+        if item
           $game_temp.in_menu = false
           pbUseKeyItemInField(item)
           return

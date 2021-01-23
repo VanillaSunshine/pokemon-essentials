@@ -64,7 +64,7 @@ class PokeBattle_Battle
       end
     end
     # Other certain switching effects
-    return true if NEWEST_BATTLE_MECHANICS && battler.pbHasType?(:GHOST)
+    return true if MORE_TYPE_EFFECTS && battler.pbHasType?(:GHOST)
     # Other certain trapping effects
     if battler.effects[PBEffects::Trapping]>0 ||
        battler.effects[PBEffects::MeanLook]>=0 ||
@@ -168,7 +168,7 @@ class PokeBattle_Battle
              pbCanChooseNonActive?(0) && @battlers[0].effects[PBEffects::Outrage]==0
             idxPartyForName = idxPartyNew
             enemyParty = pbParty(idxBattler)
-            if isConst?(enemyParty[idxPartyNew].ability,PBAbilities,:ILLUSION)
+            if enemyParty[idxPartyNew].ability == :ILLUSION
               idxPartyForName = pbLastInTeam(idxBattler)
             end
             if pbDisplayConfirm(_INTL("{1} is about to send in {2}. Will you switch your Pokémon?",
@@ -254,7 +254,7 @@ class PokeBattle_Battle
   def pbMessagesOnReplace(idxBattler,idxParty)
     party = pbParty(idxBattler)
     newPkmnName = party[idxParty].name
-    if isConst?(party[idxParty].ability,PBAbilities,:ILLUSION)
+    if party[idxParty].ability == :ILLUSION
       newPkmnName = party[pbLastInTeam(idxBattler)].name
     end
     if pbOwnedByPlayer?(idxBattler)
@@ -286,7 +286,7 @@ class PokeBattle_Battle
     partyOrder[idxParty],partyOrder[idxPartyOld] = partyOrder[idxPartyOld],partyOrder[idxParty]
     # Send out the new Pokémon
     pbSendOut([[idxBattler,party[idxParty]]])
-#    pbCalculatePriority(false,[idxBattler]) if NEWEST_BATTLE_MECHANICS
+    pbCalculatePriority(false,[idxBattler]) if RECALCULATE_TURN_ORDER_AFTER_SPEED_CHANGES
   end
 
   # Called from def pbReplace above and at the start of battle.
@@ -323,8 +323,7 @@ class PokeBattle_Battle
       pbDisplay(_INTL("Oh!\nA Shadow Pokémon!"))
     end
     # Record money-doubling effect of Amulet Coin/Luck Incense
-    if !battler.opposes? && (isConst?(battler.item,PBItems,:AMULETCOIN) ||
-                             isConst?(battler.item,PBItems,:LUCKINCENSE))
+    if !battler.opposes? && [:AMULETCOIN, :LUCKINCENSE].include?(battler.item_id)
       @field.effects[PBEffects::AmuletCoin] = true
     end
     # Update battlers' participants (who will gain Exp/EVs when a battler faints)
@@ -343,16 +342,16 @@ class PokeBattle_Battle
       pbDisplay(_INTL("{1} became cloaked in mystical moonlight!",battler.pbThis))
       battler.pbRecoverHP(battler.totalhp)
       battler.pbCureStatus(false)
-      battler.eachMove { |m| m.pp = m.totalpp }
+      battler.eachMove { |m| m.pp = m.total_pp }
       @positions[battler.index].effects[PBEffects::LunarDance] = false
     end
     # Entry hazards
     # Stealth Rock
-    if battler.pbOwnSide.effects[PBEffects::StealthRock] && battler.takesIndirectDamage?
-      aType = getConst(PBTypes,:ROCK) || 0
+    if battler.pbOwnSide.effects[PBEffects::StealthRock] && battler.takesIndirectDamage? &&
+       GameData::Type.exists?(:ROCK)
       bTypes = battler.pbTypes(true)
-      eff = PBTypes.getCombinedEffectiveness(aType,bTypes[0],bTypes[1],bTypes[2])
-      if !PBTypes.ineffective?(eff)
+      eff = PBTypes.getCombinedEffectiveness(:ROCK, bTypes[0], bTypes[1], bTypes[2])
+      if !PBTypeEffectiveness.ineffective?(eff)
         eff = eff.to_f/PBTypeEffectiveness::NORMAL_EFFECTIVE
         oldHP = battler.hp
         battler.pbReduceHP(battler.totalhp*eff/8,false)

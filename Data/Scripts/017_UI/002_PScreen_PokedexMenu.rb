@@ -17,9 +17,9 @@ class Window_DexesList < Window_CommandPokemon
   def drawItem(index,count,rect)
     super(index,count,rect)
     if index>=0 && index<@commands2.length
-      pbDrawShadowText(self.contents,rect.x+254,rect.y,64,rect.height,
+      pbDrawShadowText(self.contents,rect.x+254,rect.y + 6,64,rect.height,
          sprintf("%d",@commands2[index][0]),self.baseColor,self.shadowColor,1)
-      pbDrawShadowText(self.contents,rect.x+350,rect.y,64,rect.height,
+      pbDrawShadowText(self.contents,rect.x+350,rect.y + 6,64,rect.height,
          sprintf("%d",@commands2[index][1]),self.baseColor,self.shadowColor,1)
       allseen = (@commands2[index][0]>=@commands2[index][2])
       allown  = (@commands2[index][1]>=@commands2[index][2])
@@ -31,8 +31,9 @@ class Window_DexesList < Window_CommandPokemon
   end
 end
 
-
-
+#===============================================================================
+#
+#===============================================================================
 class PokemonPokedexMenu_Scene
   def pbUpdate
     pbUpdateSpriteHash(@sprites)
@@ -81,8 +82,9 @@ class PokemonPokedexMenu_Scene
   end
 end
 
-
-
+#===============================================================================
+#
+#===============================================================================
 class PokemonPokedexMenuScreen
   def initialize(scene)
     @scene = scene
@@ -103,7 +105,7 @@ class PokemonPokedexMenuScreen
           commands[i] = dexnames[index]
         end
       end
-      index = -1 if index>=$PokemonGlobal.pokedexUnlocked.length-1
+      index = -1 if index >= $PokemonGlobal.pokedexUnlocked.length - 1
       commands2[i] = [$Trainer.pokedexSeen(index),
                       $Trainer.pokedexOwned(index),
                       pbGetRegionalDexLength(index)]

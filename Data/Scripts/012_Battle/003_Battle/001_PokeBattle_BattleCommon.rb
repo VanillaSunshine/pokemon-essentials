@@ -5,9 +5,9 @@ module PokeBattle_BattleCommon
   def pbStorePokemon(pkmn)
     # Nickname the Pokémon (unless it's a Shadow Pokémon)
     if !pkmn.shadowPokemon?
-      if pbDisplayConfirm(_INTL("Would you like to give a nickname to {1}?",pkmn.name))
-        nickname = @scene.pbNameEntry(_INTL("{1}'s nickname?",pkmn.speciesName),pkmn)
-        pkmn.name = nickname if nickname!=""
+      if pbDisplayConfirm(_INTL("Would you like to give a nickname to {1}?", pkmn.name))
+        nickname = @scene.pbNameEntry(_INTL("{1}'s nickname?", pkmn.speciesName), pkmn)
+        pkmn.name = nickname
       end
     end
     # Store the Pokémon
@@ -15,7 +15,7 @@ module PokeBattle_BattleCommon
     storedBox  = @peer.pbStorePokemon(pbPlayer,pkmn)
     if storedBox<0
       pbDisplayPaused(_INTL("{1} has been added to your party.",pkmn.name))
-      @initialItems[0][pbPlayer.party.length-1] = pkmn.item if @initialItems
+      @initialItems[0][pbPlayer.party.length-1] = pkmn.item_id if @initialItems
       return
     end
     # Messages saying the Pokémon was stored in a PC box
@@ -53,7 +53,7 @@ module PokeBattle_BattleCommon
       end
       # Record a Shadow Pokémon's species as having been caught
       if pkmn.shadowPokemon?
-        pbPlayer.shadowcaught = [] if !pbPlayer.shadowcaught
+        pbPlayer.shadowcaught = {} if !pbPlayer.shadowcaught
         pbPlayer.shadowcaught[pkmn.species] = true
       end
       # Store caught Pokémon
@@ -65,7 +65,7 @@ module PokeBattle_BattleCommon
   #=============================================================================
   # Throw a Poké Ball
   #=============================================================================
-  def pbThrowPokeBall(idxBattler,ball,rareness=nil,showPlayer=false)
+  def pbThrowPokeBall(idxBattler,ball,catch_rate=nil,showPlayer=false)
     # Determine which Pokémon you're throwing the Poké Ball at
     battler = nil
     if opposes?(idxBattler)
@@ -80,7 +80,7 @@ module PokeBattle_BattleCommon
       end
     end
     # Messages
-    itemName = PBItems.getName(ball)
+    itemName = GameData::Item.get(ball).name
     if battler.fainted?
       if itemName.starts_with_vowel?
         pbDisplay(_INTL("{1} threw an {2}!",pbPlayer.name,itemName))
@@ -97,7 +97,7 @@ module PokeBattle_BattleCommon
     end
     # Animation of opposing trainer blocking Poké Balls (unless it's a Snag Ball
     # at a Shadow Pokémon)
-    if trainerBattle? && !(pbIsSnagBall?(ball) && battler.shadowPokemon?)
+    if trainerBattle? && !(GameData::Item.get(ball).is_snag_ball? && battler.shadowPokemon?)
       @scene.pbThrowAndDeflect(ball,1)
       pbDisplay(_INTL("The Trainer blocked your Poké Ball! Don't be a thief!"))
       return
@@ -105,7 +105,7 @@ module PokeBattle_BattleCommon
     # Calculate the number of shakes (4=capture)
     pkmn = battler.pokemon
     @criticalCapture = false
-    numShakes = pbCaptureCalc(pkmn,battler,rareness,ball)
+    numShakes = pbCaptureCalc(pkmn,battler,catch_rate,ball)
     PBDebug.log("[Threw Poké Ball] #{itemName}, #{numShakes} shakes (4=capture)")
     # Animation of Ball throw, absorb, shake and capture/burst out
     @scene.pbThrow(ball,numShakes,@criticalCapture,battler.index,showPlayer)
@@ -140,9 +140,8 @@ module PokeBattle_BattleCommon
         @decision = 4 if pbAllFainted?(battler.index)   # Battle ended by capture
       end
       # Modify the Pokémon's properties because of the capture
-      if pbIsSnagBall?(ball)
-        pkmn.ot        = pbPlayer.name
-        pkmn.trainerID = pbPlayer.id
+      if GameData::Item.get(ball).is_snag_ball?
+        pkmn.owner = Pokemon::Owner.new_from_trainer(pbPlayer)
       end
       BallHandlers.onCatch(ball,self,pkmn)
       pkmn.ballused = pbGetBallType(ball)
@@ -163,33 +162,23 @@ module PokeBattle_BattleCommon
   #=============================================================================
   # Calculate how many shakes a thrown Poké Ball will make (4 = capture)
   #=============================================================================
-  def pbCaptureCalc(pkmn,battler,rareness,ball)
+  def pbCaptureCalc(pkmn,battler,catch_rate,ball)
     return 4 if $DEBUG && Input.press?(Input::CTRL)
-    # Get a rareness if one wasn't provided
-    if !rareness
-      rareness = pbGetSpeciesData(pkmn.species,pkmn.form,SpeciesRareness)
-    end
-    # Modify rareness depending on the Poké Ball's effect
-    ultraBeast = (battler.isSpecies?(:NIHILEGO) ||
-       battler.isSpecies?(:BUZZWOLE) ||
-       battler.isSpecies?(:PHEROMOSA) ||
-       battler.isSpecies?(:XURKITREE) ||
-       battler.isSpecies?(:CELESTEELA) ||
-       battler.isSpecies?(:KARTANA) ||
-       battler.isSpecies?(:GUZZLORD) ||
-       battler.isSpecies?(:POIPOLE) ||
-       battler.isSpecies?(:NAGANADEL) ||
-       battler.isSpecies?(:STAKATAKA) ||
-       battler.isSpecies?(:BLACEPHALON))
-    if !ultraBeast || isConst?(ball,PBItems,:BEASTBALL)
-      rareness = BallHandlers.modifyCatchRate(ball,rareness,self,battler,ultraBeast)
+    # Get a catch rate if one wasn't provided
+    catch_rate = pkmn.species_data.catch_rate if !catch_rate
+    # Modify catch_rate depending on the Poké Ball's effect
+    ultraBeast = [:NIHILEGO, :BUZZWOLE, :PHEROMOSA, :XURKITREE, :CELESTEELA,
+                  :KARTANA, :GUZZLORD, :POIPOLE, :NAGANADEL, :STAKATAKA,
+                  :BLACEPHALON].include?(pkmn.species)
+    if !ultraBeast || ball == :BEASTBALL
+      catch_rate = BallHandlers.modifyCatchRate(ball,catch_rate,self,battler,ultraBeast)
     else
-      rareness /= 10
+      catch_rate /= 10
     end
     # First half of the shakes calculation
     a = battler.totalhp
     b = battler.hp
-    x = ((3*a-2*b)*rareness.to_f)/(3*a)
+    x = ((3*a-2*b)*catch_rate.to_f)/(3*a)
     # Calculation modifiers
     if battler.status==PBStatuses::SLEEP || battler.status==PBStatuses::FROZEN
       x *= 2.5
