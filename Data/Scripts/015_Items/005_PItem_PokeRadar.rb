@@ -128,7 +128,7 @@ def pbPokeRadarGetEncounter(rarity=0)
     map = $game_map.map_id rescue 0
     array = []
     for enc in POKE_RADAR_ENCOUNTERS
-      array.push(enc) if enc.length>=4 && enc[0]==map && GameData::Species.exists?(enc[2])
+      array.push(enc) if enc.length>=4 && enc[0]==map && getID(PBSpecies,enc[2])>0
     end
     # If there are any exclusives, first have a chance of encountering those
     if array.length>0
@@ -137,8 +137,9 @@ def pbPokeRadarGetEncounter(rarity=0)
       for enc in array
         chance += enc[1]
         if rnd<chance
-          level = (enc[4] && enc[4] > enc[3]) ? rand(enc[3], enc[4]) : enc[3]
-          return [enc[2], level]
+          upper = (enc[4]!=nil) ? enc[4] : enc[3]
+          level = enc[3]+rand(1+upper-enc[3])
+          return [getID(PBSpecies,enc[2]),level]
         end
       end
     end
@@ -196,7 +197,7 @@ Events.onWildPokemonCreate += proc { |_sender,e|
   next if !grasses
   for grass in grasses
     next if $game_player.x!=grass[0] || $game_player.y!=grass[1]
-    pokemon.shiny = true if grass[3]==2
+    pokemon.makeShiny if grass[3]==2
     break
   end
 }

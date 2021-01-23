@@ -242,20 +242,20 @@ class PokemonEncounters
     # not have the type they favor. If none have that type, nothing is changed.
     firstPkmn = $Trainer.firstPokemon
     if firstPkmn && rand(100)<50   # 50% chance of happening
-      favoredType = nil
-      if firstPkmn.hasAbility?(:STATIC) && GameData::Type.exists?(:ELECTRIC)
-        favoredType = :ELECTRIC
-      elsif firstPkmn.hasAbility?(:MAGNETPULL) && GameData::Type.exists?(:STEEL)
-        favoredType = :STEEL
+      favoredType = -1
+      if isConst?(firstPkmn.ability,PBAbilities,:STATIC) && hasConst?(PBTypes,:ELECTRIC)
+        favoredType = getConst(PBTypes,:ELECTRIC)
+      elsif isConst?(firstPkmn.ability,PBAbilities,:MAGNETPULL) && hasConst?(PBTypes,:STEEL)
+        favoredType = getConst(PBTypes,:STEEL)
       end
-      if favoredType
+      if favoredType>=0
         newEncList = []
         newChances = []
+        speciesData = pbLoadSpeciesData
         for i in 0...encList.length
-          speciesData = GameData::Species.get(encList[i][0])
-          t1 = speciesData.type1
-          t2 = speciesData.type2
-          next if t1 != favoredType && (!t2 || t2 != favoredType)
+          t1 = speciesData[encList[i][0]][SpeciesType1]
+          t2 = speciesData[encList[i][0]][SpeciesType2]
+          next if t1!=favoredType && (!t2 || t2!=favoredType)
           newEncList.push(encList[i])
           newChances.push(chances[i])
         end
@@ -289,19 +289,19 @@ class PokemonEncounters
     level = encounter[1]+rand(1+encounter[2]-encounter[1])
     # Some abilities alter the level of the wild Pokémon
     if firstPkmn && rand(100)<50   # 50% chance of happening
-      if firstPkmn.hasAbility?(:HUSTLE) ||
-         firstPkmn.hasAbility?(:PRESSURE) ||
-         firstPkmn.hasAbility?(:VITALSPIRIT)
+      if isConst?(firstPkmn.ability,PBAbilities,:HUSTLE) ||
+         isConst?(firstPkmn.ability,PBAbilities,:VITALSPIRIT) ||
+         isConst?(firstPkmn.ability,PBAbilities,:PRESSURE)
         level2 = encounter[1]+rand(1+encounter[2]-encounter[1])
         level = level2 if level2>level   # Higher level is more likely
       end
     end
     # Black Flute and White Flute alter the level of the wild Pokémon
-    if FLUTES_CHANGE_WILD_ENCOUNTER_LEVELS
+    if NEWEST_BATTLE_MECHANICS
       if $PokemonMap.blackFluteUsed
-        level = [level + 1 + rand(4), PBExperience.maxLevel].min
+        level = [level+1+rand(3),PBExperience.maxLevel].min
       elsif $PokemonMap.whiteFluteUsed
-        level = [level - 1 - rand(4), 1].max
+        level = [level-1-rand(3),1].max
       end
     end
     # Return [species, level]
@@ -328,34 +328,40 @@ class PokemonEncounters
     # modifiers applied, divided by 180 (numbers are multiplied by 16 below to
     # increase precision).
     encount = @density[enctype]*16
-    encount *= 0.8 if $PokemonGlobal.bicycle
-    if !FLUTES_CHANGE_WILD_ENCOUNTER_LEVELS
+    encount = encount*0.8 if $PokemonGlobal.bicycle
+    if !NEWEST_BATTLE_MECHANICS
       if $PokemonMap.blackFluteUsed
-        encount /= 2
+        encount = encount/2
       elsif $PokemonMap.whiteFluteUsed
-        encount *= 1.5
+        encount = encount*1.5
       end
     end
     firstPkmn = $Trainer.firstPokemon
     if firstPkmn
-      case firstPkmn.item_id
-      when :CLEANSETAG
-        encount *= 2.0 / 3
-      when :PUREINCENSE
-        encount *= 2.0 / 3
+      if firstPkmn.hasItem?(:CLEANSETAG)
+        encount = encount*2/3
+      elsif firstPkmn.hasItem?(:PUREINCENSE)
+        encount = encount*2/3
       else   # Ignore ability effects if an item effect applies
-        case firstPkmn.ability_id
-        when :STENCH, :WHITESMOKE, :QUICKFEET
-          encount /= 2
-        when :SNOWCLOAK
-          encount /= 2 if $game_screen.weather_type==PBFieldWeather::Snow ||
-                          $game_screen.weather_type==PBFieldWeather::Blizzard
-        when :SANDVEIL
-          encount /= 2 if $game_screen.weather_type==PBFieldWeather::Sandstorm
-        when :SWARM
-          encount *= 1.5
-        when :ILLUMINATE, :ARENATRAP, :NOGUARD
-          encount *= 2
+        if isConst?(firstPkmn.ability,PBAbilities,:STENCH)
+          encount = encount/2
+        elsif isConst?(firstPkmn.ability,PBAbilities,:WHITESMOKE)
+          encount = encount/2
+        elsif isConst?(firstPkmn.ability,PBAbilities,:QUICKFEET)
+          encount = encount/2
+        elsif isConst?(firstPkmn.ability,PBAbilities,:SNOWCLOAK)
+          encount = encount/2 if $game_screen.weather_type==PBFieldWeather::Snow ||
+                                 $game_screen.weather_type==PBFieldWeather::Blizzard
+        elsif isConst?(firstPkmn.ability,PBAbilities,:SANDVEIL)
+          encount = encount/2 if $game_screen.weather_type==PBFieldWeather::Sandstorm
+        elsif isConst?(firstPkmn.ability,PBAbilities,:SWARM)
+          encount = encount*1.5
+        elsif isConst?(firstPkmn.ability,PBAbilities,:ILLUMINATE)
+          encount = encount*2
+        elsif isConst?(firstPkmn.ability,PBAbilities,:ARENATRAP)
+          encount = encount*2
+        elsif isConst?(firstPkmn.ability,PBAbilities,:NOGUARD)
+          encount = encount*2
         end
       end
     end
@@ -367,7 +373,8 @@ class PokemonEncounters
     # Some abilities make wild encounters less likely if the wild Pokémon is
     # sufficiently weaker than the Pokémon with the ability
     if firstPkmn && rand(100)<50   # 50% chance of happening
-      if firstPkmn.hasAbility?(:INTIMIDATE) || firstPkmn.hasAbility?(:KEENEYE)
+      if isConst?(firstPkmn.ability,PBAbilities,:INTIMIDATE) ||
+         isConst?(firstPkmn.ability,PBAbilities,:KEENEYE)
         return nil if encPkmn[1]<=firstPkmn.level-5   # 5 or more levels weaker
       end
     end
@@ -382,7 +389,7 @@ class PokemonEncounters
     return false if $DEBUG && Input.press?(Input::CTRL)
     if !pbPokeRadarOnShakingGrass
       if $PokemonGlobal.repel>0 || repel
-        firstPkmn = (REPEL_COUNTS_FAINTED_POKEMON) ? $Trainer.firstPokemon : $Trainer.firstAblePokemon
+        firstPkmn = (NEWEST_BATTLE_MECHANICS) ? $Trainer.firstPokemon : $Trainer.firstAblePokemon
         return false if firstPkmn && encounter[1]<firstPkmn.level
       end
     end
@@ -397,25 +404,25 @@ end
 #===============================================================================
 # Returns a Pokémon generated by a wild encounter, given its species and level.
 def pbGenerateWildPokemon(species,level,isRoamer=false)
-  genwildpoke = Pokemon.new(species,level)
+  genwildpoke = pbNewPkmn(species,level)
   # Give the wild Pokémon a held item
   items = genwildpoke.wildHoldItems
   firstPkmn = $Trainer.firstPokemon
   chances = [50,5,1]
-  chances = [60,20,5] if firstPkmn && firstPkmn.hasAbility?(:COMPOUNDEYES)
+  chances = [60,20,5] if firstPkmn && isConst?(firstPkmn.ability,PBAbilities,:COMPOUNDEYES)
   itemrnd = rand(100)
   if (items[0]==items[1] && items[1]==items[2]) || itemrnd<chances[0]
-    genwildpoke.item = items[0]
+    genwildpoke.setItem(items[0])
   elsif itemrnd<(chances[0]+chances[1])
-    genwildpoke.item = items[1]
+    genwildpoke.setItem(items[1])
   elsif itemrnd<(chances[0]+chances[1]+chances[2])
-    genwildpoke.item = items[2]
+    genwildpoke.setItem(items[2])
   end
   # Shiny Charm makes shiny Pokémon more likely to generate
-  if GameData::Item.exists?(:SHINYCHARM) && $PokemonBag.pbHasItem?(:SHINYCHARM)
+  if hasConst?(PBItems,:SHINYCHARM) && $PokemonBag.pbHasItem?(:SHINYCHARM)
     2.times do   # 3 times as likely
       break if genwildpoke.shiny?
-      genwildpoke.personalID = rand(2**16) | rand(2**16) << 16
+      genwildpoke.personalID = rand(65536)|(rand(65536)<<16)
     end
   end
   # Give Pokérus
@@ -425,14 +432,14 @@ def pbGenerateWildPokemon(species,level,isRoamer=false)
   # Change wild Pokémon's gender/nature depending on the lead party Pokémon's
   # ability
   if firstPkmn
-    if firstPkmn.hasAbility?(:CUTECHARM) && !genwildpoke.singleGendered?
+    if isConst?(firstPkmn.ability,PBAbilities,:CUTECHARM) && !genwildpoke.singleGendered?
       if firstPkmn.male?
         (rand(3)<2) ? genwildpoke.makeFemale : genwildpoke.makeMale
       elsif firstPkmn.female?
         (rand(3)<2) ? genwildpoke.makeMale : genwildpoke.makeFemale
       end
-    elsif firstPkmn.hasAbility?(:SYNCHRONIZE)
-      genwildpoke.nature = firstPkmn.nature if !isRoamer && rand(100)<50
+    elsif isConst?(firstPkmn.ability,PBAbilities,:SYNCHRONIZE)
+      genwildpoke.setNature(firstPkmn.nature) if !isRoamer && rand(100)<50
     end
   end
   # Trigger events that may alter the generated Pokémon further

@@ -1,6 +1,3 @@
-#===============================================================================
-#
-#===============================================================================
 class Window_PokemonItemStorage < Window_DrawableCommand
   attr_reader :bag
   attr_reader :pocket
@@ -21,7 +18,7 @@ class Window_PokemonItemStorage < Window_DrawableCommand
 
   def item
     item = @bag[self.index]
-    return item ? item[0] : nil
+    return item ? item[0] : 0
   end
 
   def itemCount
@@ -37,12 +34,12 @@ class Window_PokemonItemStorage < Window_DrawableCommand
     else
       item     = @bag[index][0]
       itemname = @adapter.getDisplayName(item)
+      qty     = _ISPRINTF("x{1: 2d}",@bag[index][1])
+      sizeQty = self.contents.text_size(qty).width
+      xQty = rect.x+rect.width-sizeQty-2
       baseColor = (index==@sortIndex) ? Color.new(248,24,24) : self.baseColor
       textpos.push([itemname,rect.x,ypos,false,self.baseColor,self.shadowColor])
-      if !GameData::Item.get(item).is_important?   # Not a Key item or HM (or infinite TM)
-        qty     = _ISPRINTF("x{1: 2d}",@bag[index][1])
-        sizeQty = self.contents.text_size(qty).width
-        xQty = rect.x+rect.width-sizeQty-2
+      if !pbIsImportantItem?(item) # Not a Key item or HM (or infinite TM)
         textpos.push([qty,xQty,ypos,false,baseColor,self.shadowColor])
       end
     end
@@ -50,9 +47,8 @@ class Window_PokemonItemStorage < Window_DrawableCommand
   end
 end
 
-#===============================================================================
-#
-#===============================================================================
+
+
 class ItemStorage_Scene
   ITEMLISTBASECOLOR   = Color.new(88,88,80)
   ITEMLISTSHADOWCOLOR = Color.new(168,184,184)
@@ -77,7 +73,7 @@ class ItemStorage_Scene
     @sprites = {}
     @sprites["background"] = IconSprite.new(0,0,@viewport)
     @sprites["background"].setBitmap("Graphics/Pictures/pcItembg")
-    @sprites["icon"] = ItemIconSprite.new(50,334,nil,@viewport)
+    @sprites["icon"] = ItemIconSprite.new(50,334,-1,@viewport)
     # Item list
     @sprites["itemwindow"] = Window_PokemonItemStorage.new(@bag,98,14,334,32+ITEMSVISIBLE*32)
     @sprites["itemwindow"].viewport    = @viewport
@@ -138,10 +134,10 @@ class ItemStorage_Scene
     # Draw item icon
     @sprites["icon"].item = itemwindow.item
     # Get item description
-    if itemwindow.item
-      @sprites["itemtextwindow"].text = GameData::Item.get(itemwindow.item).description
-    else
+    if itemwindow.item==0
       @sprites["itemtextwindow"].text = _INTL("Close storage.")
+    else
+      @sprites["itemtextwindow"].text = pbGetMessage(MessageTypes::ItemDescriptions,itemwindow.item)
     end
     itemwindow.refresh
   end
@@ -159,13 +155,13 @@ class ItemStorage_Scene
         self.update
         pbRefresh if itemwindow.item!=olditem
         if Input.trigger?(Input::B)
-          return nil
+          return 0
         elsif Input.trigger?(Input::C)
           if itemwindow.index<@bag.length
             pbRefresh
             return @bag[itemwindow.index][0]
           else
-            return nil
+            return 0
           end
         end
       end
@@ -173,23 +169,23 @@ class ItemStorage_Scene
   end
 end
 
-#===============================================================================
-#
-#===============================================================================
+
+
 class WithdrawItemScene < ItemStorage_Scene
   def initialize
     super(_INTL("Withdraw\nItem"))
   end
 end
 
-#===============================================================================
-#
-#===============================================================================
+
+
 class TossItemScene < ItemStorage_Scene
   def initialize
     super(_INTL("Toss\nItem"))
   end
 end
+
+
 
 #===============================================================================
 # Common UI functions used in both the Bag and item storage screens.
@@ -262,10 +258,10 @@ module UIHelper
       (block_given?) ? yield : dw.update
       if !dw.busy? && dw.resume
         if Input.trigger?(Input::B)
-          pbPlayCancelSE
+          pbPlayCancelSE()
           break
         elsif Input.trigger?(Input::C)
-          pbPlayDecisionSE
+          pbPlayDecisionSE()
           ret = (cw.index==0)
           break
         end
@@ -298,32 +294,32 @@ module UIHelper
         (block_given?) ? yield : helpwindow.update
         if Input.trigger?(Input::B)
           ret = 0
-          pbPlayCancelSE
+          pbPlayCancelSE()
           break
         elsif Input.trigger?(Input::C)
           ret = curnumber
-          pbPlayDecisionSE
+          pbPlayDecisionSE()
           break
         elsif Input.repeat?(Input::UP)
           curnumber += 1
           curnumber = 1 if curnumber>maximum
           numwindow.text = _ISPRINTF("x{1:03d}",curnumber)
-          pbPlayCursorSE
+          pbPlayCursorSE()
         elsif Input.repeat?(Input::DOWN)
           curnumber -= 1
           curnumber = maximum if curnumber<1
           numwindow.text = _ISPRINTF("x{1:03d}",curnumber)
-          pbPlayCursorSE
+          pbPlayCursorSE()
         elsif Input.repeat?(Input::LEFT)
           curnumber -= 10
           curnumber = 1 if curnumber<1
           numwindow.text = _ISPRINTF("x{1:03d}",curnumber)
-          pbPlayCursorSE
+          pbPlayCursorSE()
         elsif Input.repeat?(Input::RIGHT)
           curnumber += 10
           curnumber = maximum if curnumber>maximum
           numwindow.text = _ISPRINTF("x{1:03d}",curnumber)
-          pbPlayCursorSE
+          pbPlayCursorSE()
         end
       end
     }
@@ -351,12 +347,12 @@ module UIHelper
         cmdwindow.update
         if Input.trigger?(Input::B)
           ret = -1
-          pbPlayCancelSE
+          pbPlayCancelSE()
           break
         end
         if Input.trigger?(Input::C)
           ret = cmdwindow.index
-          pbPlayDecisionSE
+          pbPlayDecisionSE()
           break
         end
       end

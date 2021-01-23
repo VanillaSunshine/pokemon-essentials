@@ -4,7 +4,7 @@ class PokeBattle_Scene
   # Return values: -1=Cancel, 0=Fight, 1=Bag, 2=Pokémon, 3=Run, 4=Call
   #=============================================================================
   def pbCommandMenu(idxBattler,firstAction)
-    shadowTrainer = (GameData::Type.exists?(:SHADOW) && @battle.trainerBattle?)
+    shadowTrainer = (hasConst?(PBTypes,:SHADOW) && @battle.trainerBattle?)
     cmds = [
        _INTL("What will\n{1} do?",@battle.battlers[idxBattler].name),
        _INTL("Fight"),
@@ -70,7 +70,7 @@ class PokeBattle_Scene
     cw = @sprites["fightWindow"]
     cw.battler = battler
     moveIndex = 0
-    if battler.moves[@lastMove[idxBattler]] && battler.moves[@lastMove[idxBattler]].id
+    if battler.moves[@lastMove[idxBattler]] && battler.moves[@lastMove[idxBattler]].id>0
       moveIndex = @lastMove[idxBattler]
     end
     cw.shiftMode = (@battle.pbCanShift?(idxBattler)) ? 1 : 0
@@ -98,13 +98,13 @@ class PokeBattle_Scene
       if Input.trigger?(Input::LEFT)
         cw.index -= 1 if (cw.index&1)==1
       elsif Input.trigger?(Input::RIGHT)
-        if battler.moves[cw.index+1] && battler.moves[cw.index+1].id
+        if battler.moves[cw.index+1] && battler.moves[cw.index+1].id>0
           cw.index += 1 if (cw.index&1)==0
         end
       elsif Input.trigger?(Input::UP)
         cw.index -= 2 if (cw.index&2)==2
       elsif Input.trigger?(Input::DOWN)
-        if battler.moves[cw.index+2] && battler.moves[cw.index+2].id
+        if battler.moves[cw.index+2] && battler.moves[cw.index+2].id>0
           cw.index += 2 if (cw.index&2)==0
         end
       end
@@ -200,7 +200,7 @@ class PokeBattle_Scene
     # Start Bag screen
     itemScene = PokemonBag_Scene.new
     itemScene.pbStartScene($PokemonBag,true,Proc.new { |item|
-      useType = GameData::Item.get(item).battle_use
+      useType = pbGetItemData(item,ITEM_BATTLE_USE)
       next useType && useType>0
       },false)
     # Loop while in Bag screen
@@ -208,11 +208,10 @@ class PokeBattle_Scene
     loop do
       # Select an item
       item = itemScene.pbChooseItem
-      break if !item
+      break if item==0
       # Choose a command for the selected item
-      item = GameData::Item.get(item)
-      itemName = item.name
-      useType = item.battle_use
+      itemName = PBItems.getName(item)
+      useType = pbGetItemData(item,ITEM_BATTLE_USE)
       cmdUse = -1
       commands = []
       commands[cmdUse = commands.length] = _INTL("Use") if useType && useType!=0
@@ -238,11 +237,11 @@ class PokeBattle_Scene
         case useType
         when 1, 6   # Use on Pokémon
           if @battle.pbTeamLengthFromBattlerIndex(idxBattler)==1
-            break if yield item.id, useType, @battle.battlers[idxBattler].pokemonIndex, -1, itemScene
+            break if yield item, useType, @battle.battlers[idxBattler].pokemonIndex, -1, itemScene
           end
         when 3, 8   # Use on battler
           if @battle.pbPlayerBattlerCount==1
-            break if yield item.id, useType, @battle.battlers[idxBattler].pokemonIndex, -1, itemScene
+            break if yield item, useType, @battle.battlers[idxBattler].pokemonIndex, -1, itemScene
           end
         end
         # Fade out and hide Bag screen
@@ -277,7 +276,7 @@ class PokeBattle_Scene
             idxMove = pkmnScreen.pbChooseMove(pkmn,_INTL("Restore which move?"))
             next if idxMove<0
           end
-          break if yield item.id, useType, idxPartyRet, idxMove, pkmnScene
+          break if yield item, useType, idxPartyRet, idxMove, pkmnScene
         end
         pkmnScene.pbEndScene
         break if idxParty>=0
@@ -287,7 +286,7 @@ class PokeBattle_Scene
         idxTarget = -1
         if @battle.pbOpposingBattlerCount(idxBattler)==1
           @battle.eachOtherSideBattler(idxBattler) { |b| idxTarget = b.index }
-          break if yield item.id, useType, idxTarget, -1, itemScene
+          break if yield item, useType, idxTarget, -1, itemScene
         else
           wasTargeting = true
           # Fade out and hide Bag screen
@@ -298,7 +297,7 @@ class PokeBattle_Scene
           tempVisibleSprites["targetWindow"]  = true
           idxTarget = pbChooseTarget(idxBattler,PBTargets::Foe,tempVisibleSprites)
           if idxTarget>=0
-            break if yield item.id, useType, idxTarget, -1, self
+            break if yield item, useType, idxTarget, -1, self
           end
           # Target invalid/cancelled choosing a target; show the Bag screen again
           wasTargeting = false
@@ -306,7 +305,7 @@ class PokeBattle_Scene
           itemScene.pbFadeInScene
         end
       when 5, 10   # Use with no target
-        break if yield item.id, useType, idxBattler, -1, itemScene
+        break if yield item, useType, idxBattler, -1, itemScene
       end
     end
     @bagLastPocket = $PokemonBag.lastpocket
@@ -451,7 +450,7 @@ class PokeBattle_Scene
   # Opens the nicknaming screen for a newly caught Pokémon
   #=============================================================================
   def pbNameEntry(helpText,pkmn)
-    return pbEnterPokemonName(helpText, 0, Pokemon::MAX_NAME_SIZE, "", pkmn)
+    return pbEnterPokemonName(helpText,0,PokeBattle_Pokemon::MAX_POKEMON_NAME_SIZE,"",pkmn)
   end
 
   #=============================================================================

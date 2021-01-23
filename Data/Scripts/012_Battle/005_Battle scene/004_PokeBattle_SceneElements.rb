@@ -350,8 +350,8 @@ class PokemonDataBox < SpriteWrapper
     # Data box bobbing while Pokémon is selected
     if @selected==1 || @selected==2   # Choosing commands/targeted or damaged
       case (frameCounter/QUARTER_ANIM_PERIOD).floor
-      when 1 then self.y = @spriteY-2
-      when 3 then self.y = @spriteY+2
+      when 1; self.y = @spriteY-2
+      when 3; self.y = @spriteY+2
       end
     end
   end
@@ -540,13 +540,13 @@ class PokemonBattlerSprite < RPG::Sprite
     @spriteX = p[0]
     @spriteY = p[1]
     # Apply metrics
-    @pkmn.species_data.apply_metrics_to_sprite(self, @index)
+    pbApplyBattlerMetricsToSprite(self,@index,@pkmn.fSpecies)
   end
 
   def setPokemonBitmap(pkmn,back=false)
     @pkmn = pkmn
     @_iconBitmap.dispose if @_iconBitmap
-    @_iconBitmap = GameData::Species.sprite_bitmap_from_pokemon(@pkmn, back)
+    @_iconBitmap = pbLoadPokemonBitmap(@pkmn,back)
     self.bitmap = (@_iconBitmap) ? @_iconBitmap.bitmap : nil
     pbSetPosition
   end
@@ -557,7 +557,8 @@ class PokemonBattlerSprite < RPG::Sprite
   # @battleAnimations array.
   def pbPlayIntroAnimation(pictureEx=nil)
     return if !@pkmn
-    GameData::Species.play_cry_from_pokemon(@pkmn)
+    cry = pbCryFile(@pkmn)
+    pbSEPlay(cry) if cry
   end
 
   QUARTER_ANIM_PERIOD = Graphics.frame_rate*3/20
@@ -573,8 +574,8 @@ class PokemonBattlerSprite < RPG::Sprite
     @spriteYExtra = 0
     if @selected==1    # When choosing commands for this Pokémon
       case (frameCounter/QUARTER_ANIM_PERIOD).floor
-      when 1 then @spriteYExtra = 2
-      when 3 then @spriteYExtra = -2
+      when 1; @spriteYExtra = 2
+      when 3; @spriteYExtra = -2
       end
     end
     self.x       = self.x
@@ -583,8 +584,8 @@ class PokemonBattlerSprite < RPG::Sprite
     # Pokémon sprite blinking when targeted
     if @selected==2 && @spriteVisible
       case (frameCounter/SIXTH_ANIM_PERIOD).floor
-      when 2, 5 then self.visible = false
-      else           self.visible = true
+      when 2, 5; self.visible = false
+      else;      self.visible = true
       end
     end
     @updating = false
@@ -636,13 +637,13 @@ class PokemonBattlerShadowSprite < RPG::Sprite
     self.x = p[0]
     self.y = p[1]
     # Apply metrics
-    @pkmn.species_data.apply_metrics_to_sprite(self, @index, true)
+    pbApplyBattlerMetricsToSprite(self,@index,@pkmn.fSpecies,true)
   end
 
   def setPokemonBitmap(pkmn)
     @pkmn = pkmn
     @_iconBitmap.dispose if @_iconBitmap
-    @_iconBitmap = GameData::Species.shadow_bitmap_from_pokemon(@pkmn)
+    @_iconBitmap = pbLoadPokemonShadowBitmap(@pkmn)
     self.bitmap = (@_iconBitmap) ? @_iconBitmap.bitmap : nil
     pbSetPosition
   end

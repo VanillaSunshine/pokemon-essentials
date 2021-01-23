@@ -1,6 +1,12 @@
 #===============================================================================
 # Battle start animation
 #===============================================================================
+class Game_Temp
+  attr_accessor :background_bitmap
+end
+
+
+
 def pbSceneStandby
   $scene.disposeSpritesets if $scene && $scene.is_a?(Scene_Map)
   GC.start
@@ -46,8 +52,7 @@ def pbBattleAnimation(bgm=nil,battletype=0,foe=nil)
       location = 3
     elsif $PokemonEncounters.isCave?
       location = 2
-    elsif !GameData::MapMetadata.exists?($game_map.map_id) ||
-          !GameData::MapMetadata.get($game_map.map_id).outdoor_map
+    elsif !pbGetMetadata($game_map.map_id,MetadataOutdoor)
       location = 1
     end
     anim = ""
@@ -131,16 +136,13 @@ def pbBattleAnimationOverride(viewport,battletype=0,foe=nil)
   ##### VS. animation, by Luka S.J. #####
   ##### Tweaked by Maruno           #####
   if (battletype==1 || battletype==3) && foe.length==1   # Against single trainer
-    tr_type = foe[0].trainertype
-    tr_type_id = GameData::TrainerType.get(tr_type).id_number
-    if tr_type
-      tbargraphic = sprintf("Graphics/Transitions/vsBar%s", tr_type.to_s) rescue nil
-      tbargraphic = sprintf("Graphics/Transitions/vsBar%d", tr_type_id) if !pbResolveBitmap(tbargraphic)
-      tgraphic    = sprintf("Graphics/Transitions/vsTrainer%s", tr_type.to_s) rescue nil
-      tgraphic    = sprintf("Graphics/Transitions/vsTrainer%d", tr_type_id) if !pbResolveBitmap(tgraphic)
+    trainerid = (foe[0].trainertype rescue -1)
+    if trainerid>=0
+      tbargraphic = sprintf("Graphics/Transitions/vsBar%s",getConstantName(PBTrainers,trainerid)) rescue nil
+      tbargraphic = sprintf("Graphics/Transitions/vsBar%d",trainerid) if !pbResolveBitmap(tbargraphic)
+      tgraphic    = sprintf("Graphics/Transitions/vsTrainer%s",getConstantName(PBTrainers,trainerid)) rescue nil
+      tgraphic    = sprintf("Graphics/Transitions/vsTrainer%d",trainerid) if !pbResolveBitmap(tgraphic)
       if pbResolveBitmap(tbargraphic) && pbResolveBitmap(tgraphic)
-        player_tr_type = $Trainer.trainertype
-        player_tr_type_id = GameData::TrainerType.get(player_tr_type).id_number
         outfit = $Trainer.outfit
         # Set up
         viewplayer = Viewport.new(0,Graphics.height/3,Graphics.width/2,128)
@@ -156,12 +158,12 @@ def pbBattleAnimationOverride(viewport,battletype=0,foe=nil)
         overlay = Sprite.new(viewport)
         overlay.bitmap = Bitmap.new(Graphics.width,Graphics.height)
         pbSetSystemFont(overlay.bitmap)
-        pbargraphic = sprintf("Graphics/Transitions/vsBar%s_%d", player_tr_type.to_s, outfit) rescue nil
-        pbargraphic = sprintf("Graphics/Transitions/vsBar%d_%d", player_tr_type_id, outfit) if !pbResolveBitmap(pbargraphic)
+        pbargraphic = sprintf("Graphics/Transitions/vsBar%s_%d",getConstantName(PBTrainers,$Trainer.trainertype),outfit) rescue nil
+        pbargraphic = sprintf("Graphics/Transitions/vsBar%d_%d",$Trainer.trainertype,outfit) if !pbResolveBitmap(pbargraphic)
         if !pbResolveBitmap(pbargraphic)
-          pbargraphic = sprintf("Graphics/Transitions/vsBar%s", player_tr_type.to_s) rescue nil
-          pbargraphic = sprintf("Graphics/Transitions/vsBar%d", player_tr_type_id) if !pbResolveBitmap(pbargraphic)
+          pbargraphic = sprintf("Graphics/Transitions/vsBar%s",getConstantName(PBTrainers,$Trainer.trainertype)) rescue nil
         end
+        pbargraphic = sprintf("Graphics/Transitions/vsBar%d",$Trainer.trainertype) if !pbResolveBitmap(pbargraphic)
         xoffset = ((Graphics.width/2)/10)*10
         bar1 = Sprite.new(viewplayer)
         bar1.bitmap = BitmapCache.load_bitmap(pbargraphic)
@@ -197,12 +199,12 @@ def pbBattleAnimationOverride(viewport,battletype=0,foe=nil)
         bar1.bitmap = BitmapCache.load_bitmap(pbargraphic)
         bar2 = AnimatedPlane.new(viewopp)
         bar2.bitmap = BitmapCache.load_bitmap(tbargraphic)
-        pgraphic = sprintf("Graphics/Transitions/vsTrainer%s_%d", player_tr_type.to_s, outfit) rescue nil
-        pgraphic = sprintf("Graphics/Transitions/vsTrainer%d_%d", player_tr_type_id, outfit) if !pbResolveBitmap(pgraphic)
+        pgraphic = sprintf("Graphics/Transitions/vsTrainer%s_%d",getConstantName(PBTrainers,$Trainer.trainertype),outfit) rescue nil
+        pgraphic = sprintf("Graphics/Transitions/vsTrainer%d_%d",$Trainer.trainertype,outfit) if !pbResolveBitmap(pgraphic)
         if !pbResolveBitmap(pgraphic)
-          pgraphic = sprintf("Graphics/Transitions/vsTrainer%s", player_tr_type.to_s) rescue nil
-          pgraphic = sprintf("Graphics/Transitions/vsTrainer%d", player_tr_type_id) if !pbResolveBitmap(pgraphic)
+          pgraphic = sprintf("Graphics/Transitions/vsTrainer%s",getConstantName(PBTrainers,$Trainer.trainertype)) rescue nil
         end
+        pgraphic = sprintf("Graphics/Transitions/vsTrainer%d",$Trainer.trainertype) if !pbResolveBitmap(pgraphic)
         player = Sprite.new(viewplayer)
         player.bitmap = BitmapCache.load_bitmap(pgraphic)
         player.x      = -xoffset
@@ -623,7 +625,11 @@ end
 # Blacking out animation
 #===============================================================================
 def pbRxdataExists?(file)
-  return pbRgssExists?(file+".rxdata")
+  if $RPGVX
+    return pbRgssExists?(file+".rvdata")
+  else
+    return pbRgssExists?(file+".rxdata")
+  end
 end
 
 def pbStartOver(gameover=false)
@@ -648,7 +654,7 @@ def pbStartOver(gameover=false)
     $scene.transfer_player if $scene.is_a?(Scene_Map)
     $game_map.refresh
   else
-    homedata = GameData::Metadata.get.home
+    homedata = pbGetMetadata(0,MetadataHome)
     if homedata && !pbRxdataExists?(sprintf("Data/Map%03d",homedata[0]))
       if $DEBUG
         pbMessage(_ISPRINTF("Can't find the map 'Map{1:03d}' in the Data folder. The game will resume at the player's position.",homedata[0]))
@@ -701,10 +707,10 @@ end
 def pbScrollMap(direction,distance,speed)
   if speed==0
     case direction
-    when 2 then $game_map.scroll_down(distance * Game_Map::REAL_RES_Y)
-    when 4 then $game_map.scroll_left(distance * Game_Map::REAL_RES_X)
-    when 6 then $game_map.scroll_right(distance * Game_Map::REAL_RES_X)
-    when 8 then $game_map.scroll_up(distance * Game_Map::REAL_RES_Y)
+    when 2; $game_map.scroll_down(distance * Game_Map::REAL_RES_Y)
+    when 4; $game_map.scroll_left(distance * Game_Map::REAL_RES_X)
+    when 6; $game_map.scroll_right(distance * Game_Map::REAL_RES_X)
+    when 8; $game_map.scroll_up(distance * Game_Map::REAL_RES_Y)
     end
   else
     $game_map.start_scroll(direction, distance, speed)

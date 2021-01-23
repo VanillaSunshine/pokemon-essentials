@@ -1,6 +1,3 @@
-#===============================================================================
-#
-#===============================================================================
 class MapBottomSprite < SpriteWrapper
   attr_reader :mapname
   attr_reader :maplocation
@@ -55,9 +52,8 @@ class MapBottomSprite < SpriteWrapper
   end
 end
 
-#===============================================================================
-#
-#===============================================================================
+
+
 class PokemonRegionMap_Scene
   LEFT   = 0
   TOP    = 0
@@ -81,8 +77,7 @@ class PokemonRegionMap_Scene
     @viewport.z = 99999
     @sprites = {}
     @mapdata = pbLoadTownMapData
-    map_metadata = GameData::MapMetadata.try_get($game_map.map_id)
-    playerpos = (map_metadata) ? map_metadata.town_map_position : nil
+    playerpos = (!$game_map) ? nil : pbGetMetadata($game_map.map_id,MetadataMapPosition)
     if !playerpos
       mapindex = 0
       @map     = @mapdata[0]
@@ -98,7 +93,7 @@ class PokemonRegionMap_Scene
       @map     = @mapdata[playerpos[0]]
       @mapX    = playerpos[1]
       @mapY    = playerpos[2]
-      mapsize = map_metadata.town_map_size
+      mapsize = (!$game_map) ? nil : pbGetMetadata($game_map.map_id,MetadataMapSize)
       if mapsize && mapsize[0] && mapsize[0]>0
         sqwidth  = mapsize[0]
         sqheight = (mapsize[1].length*1.0/mapsize[0]).ceil
@@ -138,7 +133,7 @@ class PokemonRegionMap_Scene
     @sprites["mapbottom"].mapdetails  = pbGetMapDetails(@mapX,@mapY)
     if playerpos && mapindex==playerpos[0]
       @sprites["player"] = IconSprite.new(0,0,@viewport)
-      @sprites["player"].setBitmap(GameData::TrainerType.player_map_icon_filename($Trainer.trainertype))
+      @sprites["player"].setBitmap(pbPlayerHeadFile($Trainer.trainertype))
       @sprites["player"].x = -SQUAREWIDTH/2+(@mapX*SQUAREWIDTH)+(Graphics.width-@sprites["map"].bitmap.width)/2
       @sprites["player"].y = -SQUAREHEIGHT/2+(@mapY*SQUAREHEIGHT)+(Graphics.height-@sprites["map"].bitmap.height)/2
     end
@@ -168,7 +163,6 @@ class PokemonRegionMap_Scene
     return true
   end
 
-  # TODO: Why is this PBS file writer here?
   def pbSaveMapData
     File.open("PBS/townmap.txt","wb") { |f|
       f.write(0xEF.chr)
@@ -181,11 +175,10 @@ class PokemonRegionMap_Scene
         next if !map
         f.write("\#-------------------------------\r\n")
         f.write(sprintf("[%d]\r\n",i))
-        f.write(sprintf("Name = %s\r\nFilename = %s\r\n",
-          Compiler.csvQuote(map[0]), Compiler.csvQuote(map[1])))
+        f.write(sprintf("Name=%s\r\nFilename=%s\r\n",csvQuote(map[0]),csvQuote(map[1])))
         for loc in map[2]
-          f.write("Point = ")
-          Compiler.pbWriteCsvRecord(loc,f,[nil,"uussUUUU"])
+          f.write("Point=")
+          pbWriteCsvRecord(loc,f,[nil,"uussUUUU"])
           f.write("\r\n")
         end
       end
@@ -346,9 +339,8 @@ class PokemonRegionMap_Scene
   end
 end
 
-#===============================================================================
-#
-#===============================================================================
+
+
 class PokemonRegionMapScreen
   def initialize(scene)
     @scene = scene
@@ -368,9 +360,8 @@ class PokemonRegionMapScreen
   end
 end
 
-#===============================================================================
-#
-#===============================================================================
+
+
 def pbShowMap(region=-1,wallmap=true)
   pbFadeOutIn {
     scene = PokemonRegionMap_Scene.new(region,wallmap)

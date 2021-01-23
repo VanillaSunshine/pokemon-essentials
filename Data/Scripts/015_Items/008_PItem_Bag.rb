@@ -21,20 +21,20 @@ class PokemonBag
       @choices[i] = 0
     end
     @registeredItems = []
-    @registeredIndex = [0, 0, 1]
+    @registeredIndex = [0,0,1]
   end
 
   def rearrange
-    if (@pockets.length - 1) != PokemonBag.numPockets
+    if (@pockets.length-1)!=PokemonBag.numPockets
       newpockets = []
       for i in 0..PokemonBag.numPockets
         newpockets[i] = []
-        @choices[i] = 0 if !@choices[i]
+        @choices[i]   = 0 if !@choices[i]
       end
-      num_pockets = PokemonBag.numPockets
-      for i in 0...[@pockets.length, num_pockets].min
+      nump = PokemonBag.numPockets
+      for i in 0...[@pockets.length,nump].min
         for item in @pockets[i]
-          p = GameData::Item.get(item[0]).pocket
+          p = pbGetPocket(item[0])
           newpockets[p].push(item)
         end
       end
@@ -43,7 +43,9 @@ class PokemonBag
   end
 
   def clear
-    @pockets.each { |pocket| pocket.clear }
+    for pocket in @pockets
+      pocket.clear
+    end
   end
 
   def pockets
@@ -59,27 +61,25 @@ class PokemonBag
 
   # Gets the index of the current selected item in the pocket
   def getChoice(pocket)
-    if pocket <= 0 || pocket > PokemonBag.numPockets
-      raise ArgumentError.new(_INTL("Invalid pocket: {1}", pocket.inspect))
+    if pocket<=0 || pocket>PokemonBag.numPockets
+      raise ArgumentError.new(_INTL("Invalid pocket: {1}",pocket.inspect))
     end
     rearrange
-    return [@choices[pocket], @pockets[pocket].length].min || 0
+    return [@choices[pocket],@pockets[pocket].length].min || 0
   end
 
   # Sets the index of the current selected item in the pocket
   def setChoice(pocket,value)
-    if pocket <= 0 || pocket > PokemonBag.numPockets
-      raise ArgumentError.new(_INTL("Invalid pocket: {1}", pocket.inspect))
+    if pocket<=0 || pocket>PokemonBag.numPockets
+      raise ArgumentError.new(_INTL("Invalid pocket: {1}",pocket.inspect))
     end
     rearrange
-    @choices[pocket] = value if value <= @pockets[pocket].length
+    @choices[pocket] = value if value<=@pockets[pocket].length
   end
 
   def getAllChoices
     ret = @choices.clone
-    for i in 0...@choices.length
-      @choices[i] = 0
-    end
+    for i in 0...@choices.length; @choices[i] = 0; end
     return ret
   end
 
@@ -88,98 +88,143 @@ class PokemonBag
   end
 
   def pbQuantity(item)
-    item = GameData::Item.get(item)
-    pocket = item.pocket
-    return ItemStorageHelper.pbQuantity(@pockets[pocket], item.id)
+    item = getID(PBItems,item)
+    if !item || item<1
+      raise ArgumentError.new(_INTL("Item number {1} is invalid.",item))
+    end
+    pocket = pbGetPocket(item)
+    maxsize = maxPocketSize(pocket)
+    maxsize = @pockets[pocket].length if maxsize<0
+    return ItemStorageHelper.pbQuantity(@pockets[pocket],maxsize,item)
   end
 
   def pbHasItem?(item)
-    return pbQuantity(item) > 0
+    return pbQuantity(item)>0
   end
 
-  def pbCanStore?(item, qty = 1)
-    item = GameData::Item.get(item)
-    pocket = item.pocket
+  def pbCanStore?(item,qty=1)
+    item = getID(PBItems,item)
+    if !item || item<1
+      raise ArgumentError.new(_INTL("Item number {1} is invalid.",item))
+    end
+    pocket = pbGetPocket(item)
     maxsize = maxPocketSize(pocket)
-    maxsize = @pockets[pocket].length + 1 if maxsize < 0
-    return ItemStorageHelper.pbCanStore?(
-       @pockets[pocket], maxsize, BAG_MAX_PER_SLOT, item.id, qty)
+    maxsize = @pockets[pocket].length+1 if maxsize<0
+    return ItemStorageHelper.pbCanStore?(@pockets[pocket],maxsize,
+                                         BAG_MAX_PER_SLOT,item,qty)
   end
 
-  def pbStoreItem(item, qty = 1)
-    item = GameData::Item.get(item)
-    pocket = item.pocket
+  def pbStoreAllOrNone(item,qty=1)
+    item = getID(PBItems,item)
+    if !item || item<1
+      raise ArgumentError.new(_INTL("Item number {1} is invalid.",item))
+    end
+    pocket = pbGetPocket(item)
     maxsize = maxPocketSize(pocket)
-    maxsize = @pockets[pocket].length + 1 if maxsize < 0
-    return ItemStorageHelper.pbStoreItem(
-       @pockets[pocket], maxsize, BAG_MAX_PER_SLOT, item.id, qty, true)
+    maxsize = @pockets[pocket].length+1 if maxsize<0
+    return ItemStorageHelper.pbStoreAllOrNone(@pockets[pocket],maxsize,
+                                              BAG_MAX_PER_SLOT,item,qty)
   end
 
-  def pbStoreAllOrNone(item, qty = 1)
-    return false if !pbCanStore?(item, qty)
-    return pbStoreItem(item, qty)
+  def pbStoreItem(item,qty=1)
+    item = getID(PBItems,item)
+    if !item || item<1
+      raise ArgumentError.new(_INTL("Item number {1} is invalid.",item))
+    end
+    pocket = pbGetPocket(item)
+    maxsize = maxPocketSize(pocket)
+    maxsize = @pockets[pocket].length+1 if maxsize<0
+    return ItemStorageHelper.pbStoreItem(@pockets[pocket],maxsize,
+                                         BAG_MAX_PER_SLOT,item,qty,true)
   end
 
-  def pbChangeItem(old_item, new_item)
-    old_item = GameData::Item.get(old_item)
-    new_item = GameData::Item.get(new_item)
-    pocket = old_item.pocket
+  def pbChangeItem(olditem,newitem)
+    olditem = getID(PBItems,olditem)
+    newitem = getID(PBItems,newitem)
+    if !olditem || olditem<1
+      raise ArgumentError.new(_INTL("Item number {1} is invalid.",olditem))
+    elsif !newitem || newitem<1
+      raise ArgumentError.new(_INTL("Item number {1} is invalid.",newitem))
+    end
+    pocket = pbGetPocket(olditem)
+    maxsize = maxPocketSize(pocket)
+    maxsize = @pockets[pocket].length if maxsize<0
     ret = false
-    @pockets[pocket].each do |item|
-      next if !item || item[0] != old_item.id
-      item[0] = new_item.id
-      ret = true
+    for i in 0...maxsize
+      itemslot = @pockets[pocket][i]
+      if itemslot && itemslot[0]==olditem
+        itemslot[0] = newitem
+        ret = true
+      end
     end
     return ret
   end
 
-  def pbChangeQuantity(pocket, index, newqty = 1)
-    return false if pocket <= 0 || pocket > self.numPockets
-    return false if !@pockets[pocket][index]
-    newqty = [newqty, maxPocketSize(pocket)].min
+  def pbChangeQuantity(pocket,index,newqty=1)
+    return false if pocket<=0 || pocket>self.numPockets
+    return false if @pockets[pocket].length<index
+    newqty = [newqty,maxPocketSize(pocket)].min
     @pockets[pocket][index][1] = newqty
     return true
   end
 
-  def pbDeleteItem(item, qty = 1)
-    item = GameData::Item.get(item)
-    pocket = item.pocket
-    ret = ItemStorageHelper.pbDeleteItem(@pockets[pocket], item.id, qty)
+  def pbDeleteItem(item,qty=1)
+    item = getID(PBItems,item)
+    if !item || item<1
+      raise ArgumentError.new(_INTL("Item number {1} is invalid.",item))
+    end
+    pocket = pbGetPocket(item)
+    maxsize = maxPocketSize(pocket)
+    maxsize = @pockets[pocket].length if maxsize<0
+    ret = ItemStorageHelper.pbDeleteItem(@pockets[pocket],maxsize,item,qty)
     return ret
   end
 
   def registeredItems
     @registeredItems = [] if !@registeredItems
+    if @registeredItem && @registeredItem>0 && !@registeredItems.include?(@registeredItem)
+      @registeredItems.push(@registeredItem)
+      @registeredItem = nil
+    end
     return @registeredItems
   end
 
+  def registeredItem; return registeredItems; end
+
   def pbIsRegistered?(item)
-    item = GameData::Item.get(item).id
     registeredlist = self.registeredItems
     return registeredlist.include?(item)
   end
 
   # Registers the item in the Ready Menu.
   def pbRegisterItem(item)
-    item = GameData::Item.get(item).id
+    item = getID(PBItems,item)
+    if !item || item<1
+      raise ArgumentError.new(_INTL("Item number {1} is invalid.",item))
+    end
     registeredlist = self.registeredItems
     registeredlist.push(item) if !registeredlist.include?(item)
   end
 
   # Unregisters the item from the Ready Menu.
   def pbUnregisterItem(item)
-    item = GameData::Item.get(item).id
-    registeredlist = self.registeredItems
-    for i in 0...registeredlist.length
-      next if registeredlist[i] != item
-      registeredlist[i] = nil
-      break
+    item = getID(PBItems,item)
+    if !item || item<1
+      raise ArgumentError.new(_INTL("Item number {1} is invalid.",item))
     end
-    registeredlist.compact!
+    registeredlist = self.registeredItems
+    if registeredlist.include?(item)
+      for i in 0...registeredlist.length
+        next if registeredlist[i]!=item
+        registeredlist[i] = nil
+        break
+      end
+      registeredlist.compact!
+    end
   end
 
   def registeredIndex
-    @registeredIndex = [0, 0, 1] if !@registeredIndex
+    @registeredIndex = [0,0,1] if !@registeredIndex
     return @registeredIndex
   end
 end
@@ -190,25 +235,25 @@ end
 # The PC item storage object, which actually contains all the items
 #===============================================================================
 class PCItemStorage
-  MAX_SIZE     = 999   # Number of different slots in storage
-  MAX_PER_SLOT = 999   # Max. number of items per slot
+  MAXSIZE    = 50    # Number of different slots in storage
+  MAXPERSLOT = 999   # Max. number of items per slot
 
   def initialize
     @items = []
     # Start storage with a Potion
-    pbStoreItem(:POTION) if GameData::Item.exists?(:POTION)
+    pbStoreItem(getConst(PBItems,:POTION)) if hasConst?(PBItems,:POTION)
   end
 
   def [](i)
-    return @items[i]
+    @items[i]
   end
 
   def length
-    return @items.length
+    @items.length
   end
 
   def empty?
-    return @items.length == 0
+    return @items.length==0
   end
 
   def clear
@@ -216,31 +261,27 @@ class PCItemStorage
   end
 
   def getItem(index)
-    return (index < 0 || index >= @items.length) ? nil : @items[index][0]
+    return (index<0 || index>=@items.length) ? 0 : @items[index][0]
   end
 
   def getCount(index)
-    return (index < 0 || index >= @items.length) ? 0 : @items[index][1]
+    return (index<0 || index>=@items.length) ? 0 : @items[index][1]
   end
 
   def pbQuantity(item)
-    item = GameData::Item.get(item).id
-    return ItemStorageHelper.pbQuantity(@items, item)
+    return ItemStorageHelper.pbQuantity(@items,MAXSIZE,item)
   end
 
-  def pbCanStore?(item, qty = 1)
-    item = GameData::Item.get(item).id
-    return ItemStorageHelper.pbCanStore?(@items, MAX_SIZE, MAX_PER_SLOT, item, qty)
+  def pbCanStore?(item,qty=1)
+    return ItemStorageHelper.pbCanStore?(@items,MAXSIZE,MAXPERSLOT,item,qty)
   end
 
-  def pbStoreItem(item, qty = 1)
-    item = GameData::Item.get(item).id
-    return ItemStorageHelper.pbStoreItem(@items, MAX_SIZE, MAX_PER_SLOT, item, qty)
+  def pbStoreItem(item,qty=1)
+    return ItemStorageHelper.pbStoreItem(@items,MAXSIZE,MAXPERSLOT,item,qty)
   end
 
-  def pbDeleteItem(item, qty = 1)
-    item = GameData::Item.get(item).id
-    return ItemStorageHelper.pbDeleteItem(@items, item, qty)
+  def pbDeleteItem(item,qty=1)
+    return ItemStorageHelper.pbDeleteItem(@items,MAXSIZE,item,qty)
   end
 end
 
@@ -252,26 +293,30 @@ end
 # Used by the Bag, PC item storage, and Triple Triad.
 #===============================================================================
 module ItemStorageHelper
-  # Returns the quantity of check_item in item_array
-  def self.pbQuantity(item_array, check_item)
+  # Returns the quantity of the given item in the items array, maximum size per
+  # slot, and item ID
+  def self.pbQuantity(items,maxsize,item)
     ret = 0
-    item_array.each { |i| ret += i[1] if i && i[0] == check_item }
+    for i in 0...maxsize
+      itemslot = items[i]
+      ret += itemslot[1] if itemslot && itemslot[0]==item
+    end
     return ret
   end
 
   # Deletes an item (items array, max. size per slot, item, no. of items to delete)
-  def self.pbDeleteItem(items, item, qty)
-    raise "Invalid value for qty: #{qty}" if qty < 0
-    return true if qty == 0
+  def self.pbDeleteItem(items,maxsize,item,qty)
+    raise "Invalid value for qty: #{qty}" if qty<0
+    return true if qty==0
     ret = false
-    for i in 0...items.length
+    for i in 0...maxsize
       itemslot = items[i]
-      next if !itemslot || itemslot[0] != item
-      amount = [qty, itemslot[1]].min
+      next if !itemslot || itemslot[0]!=item
+      amount = [qty,itemslot[1]].min
       itemslot[1] -= amount
       qty -= amount
-      items[i] = nil if itemslot[1] == 0
-      next if qty > 0
+      items[i] = nil if itemslot[1]==0
+      next if qty>0
       ret = true
       break
     end
@@ -279,44 +324,41 @@ module ItemStorageHelper
     return ret
   end
 
-  def self.pbCanStore?(items, maxsize, maxPerSlot, item, qty)
-    raise "Invalid value for qty: #{qty}" if qty < 0
-    return true if qty == 0
+  def self.pbCanStore?(items,maxsize,maxPerSlot,item,qty)
+    raise "Invalid value for qty: #{qty}" if qty<0
+    return true if qty==0
     for i in 0...maxsize
       itemslot = items[i]
       if !itemslot
-        qty -= [qty, maxPerSlot].min
-        return true if qty == 0
-      elsif itemslot[0] == item && itemslot[1] < maxPerSlot
+        qty -= [qty,maxPerSlot].min
+        return true if qty==0
+      elsif itemslot[0]==item && itemslot[1]<maxPerSlot
         newamt = itemslot[1]
-        newamt = [newamt + qty, maxPerSlot].min
-        qty -= (newamt - itemslot[1])
-        return true if qty == 0
+        newamt = [newamt+qty,maxPerSlot].min
+        qty -= (newamt-itemslot[1])
+        return true if qty==0
       end
     end
     return false
   end
 
-  def self.pbStoreItem(items, maxsize, maxPerSlot, item, qty, sorting = false)
-    raise "Invalid value for qty: #{qty}" if qty < 0
-    return true if qty == 0
-    itm = GameData::Item.try_get(item)
-    itemPocket = (itm) ? itm.pocket : 0
+  def self.pbStoreItem(items,maxsize,maxPerSlot,item,qty,sorting=false)
+    raise "Invalid value for qty: #{qty}" if qty<0
+    return true if qty==0
+    itemPocket = pbGetPocket(item)
     for i in 0...maxsize
       itemslot = items[i]
       if !itemslot
-        items[i] = [item, [qty, maxPerSlot].min]
+        items[i] = [item,[qty,maxPerSlot].min]
         qty -= items[i][1]
-        if itemPocket > 0 && sorting && BAG_POCKET_AUTO_SORT[itemPocket]
-          items.sort! { |a, b| GameData::Item.get(a[0]).id_number <=> GameData::Item.get(b[0]).id_number }
-        end
-        return true if qty == 0
-      elsif itemslot[0] == item && itemslot[1] < maxPerSlot
+        items.sort! if sorting && BAG_POCKET_AUTO_SORT[itemPocket]
+        return true if qty==0
+      elsif itemslot[0]==item && itemslot[1]<maxPerSlot
         newamt = itemslot[1]
-        newamt = [newamt + qty, maxPerSlot].min
-        qty -= (newamt - itemslot[1])
+        newamt = [newamt+qty,maxPerSlot].min
+        qty -= (newamt-itemslot[1])
         itemslot[1] = newamt
-        return true if qty == 0
+        return true if qty==0
       end
     end
     return false

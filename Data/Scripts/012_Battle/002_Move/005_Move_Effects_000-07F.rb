@@ -32,8 +32,9 @@ end
 #===============================================================================
 class PokeBattle_Move_003 < PokeBattle_SleepMove
   def pbMoveFailed?(user,targets)
-    if MECHANICS_GENERATION >= 7 && @id == :DARKVOID
-      if !user.isSpecies?(:DARKRAI) && user.effects[PBEffects::TransformSpecies] != :DARKRAI
+    if NEWEST_BATTLE_MECHANICS && isConst?(@id,PBMoves,:DARKVOID)
+      if !user.isSpecies?(:DARKRAI) &&
+         !isConst?(user.effects[PBEffects::TransformSpecies],PBSpecies,:DARKRAI)
         @battle.pbDisplay(_INTL("But {1} can't use the move!",user.pbThis))
         return true
       end
@@ -44,7 +45,7 @@ class PokeBattle_Move_003 < PokeBattle_SleepMove
   def pbEndOfMoveUsageEffect(user,targets,numHits,switchedBattlers)
     return if numHits==0
     return if user.fainted? || user.effects[PBEffects::Transform]
-    return if @id != :RELICSONG
+    return if !isConst?(@id,PBMoves,:RELICSONG)
     return if !user.isSpecies?(:MELOETTA)
     return if user.hasActiveAbility?(:SHEERFORCE) && @addlEffect>0
     newForm = (user.Form+1)%2
@@ -93,7 +94,7 @@ class PokeBattle_Move_006 < PokeBattle_PoisonMove
   end
 
   def pbOverrideSuccessCheckPerHit(user,target)
-    return (MORE_TYPE_EFFECTS && statusMove? && user.pbHasType?(:POISON))
+    return (NEWEST_BATTLE_MECHANICS && statusMove? && user.pbHasType?(:POISON))
   end
 end
 
@@ -107,12 +108,12 @@ end
 class PokeBattle_Move_007 < PokeBattle_ParalysisMove
   def tramplesMinimize?(param=1)
     # Perfect accuracy and double damage (for Body Slam only)
-    return MECHANICS_GENERATION >= 6 if @id == :BODYSLAM
+    return NEWEST_BATTLE_MECHANICS if isConst?(@id,PBMoves,:BODYSLAM)
     return super
   end
 
   def pbFailsAgainstTarget?(user,target)
-    if @id == :THUNDERWAVE && PBTypeEffectiveness.ineffective?(target.damageState.typeMod)
+    if isConst?(@id,PBMoves,:THUNDERWAVE) && PBTypes.ineffective?(target.damageState.typeMod)
       @battle.pbDisplay(_INTL("It doesn't affect {1}...",target.pbThis(true)))
       return true
     end
@@ -241,8 +242,8 @@ end
 #===============================================================================
 class PokeBattle_Move_010 < PokeBattle_FlinchMove
   def tramplesMinimize?(param=1)
-    return super if @id == :DRAGONRUSH && MECHANICS_GENERATION <= 5
-    return true if param==1 && MECHANICS_GENERATION >= 6   # Perfect accuracy
+    return super if isConst?(@id,PBMoves,:DRAGONRUSH) && !NEWEST_BATTLE_MECHANICS
+    return true if param==1 && NEWEST_BATTLE_MECHANICS   # Perfect accuracy
     return true if param==2   # Double damage
     return super
   end
@@ -292,9 +293,22 @@ end
 
 
 #===============================================================================
-# Confuses the target. (Chatter)
+# Confuses the target. Chance of causing confusion depends on the cry's volume.
+# Confusion chance is 0% if user doesn't have a recorded cry. (Chatter)
 #===============================================================================
-class PokeBattle_Move_014 < PokeBattle_Move_013
+class PokeBattle_Move_014 < PokeBattle_ConfuseMove
+  def pbOnStartUse(user,targets)
+    @chatterChance = 0
+    if user.pokemon && user.pokemon.chatter
+      # Intensity can be 0-127, so return value is 0-10
+      @chatterChance = 10*user.pokemon.chatter.intensity/127
+    end
+  end
+
+  def addlEffect
+    return @chatterChance if !NEWEST_BATTLE_MECHANICS
+    return super
+  end
 end
 
 
@@ -352,9 +366,9 @@ class PokeBattle_Move_017 < PokeBattle_Move
   def pbAdditionalEffect(user,target)
     return if target.damageState.substitute
     case @battle.pbRandom(3)
-    when 0 then target.pbBurn(user) if target.pbCanBurn?(user, false, self)
-    when 1 then target.pbFreeze if target.pbCanFreeze?(user, false, self)
-    when 2 then target.pbParalyze(user) if target.pbCanParalyze?(user, false, self)
+    when 0; target.pbBurn(user) if target.pbCanBurn?(user,false,self)
+    when 1; target.pbFreeze if target.pbCanFreeze?(user,false,self)
+    when 2; target.pbParalyze(user) if target.pbCanParalyze?(user,false,self)
     end
   end
 end
@@ -478,9 +492,9 @@ class PokeBattle_Move_019 < PokeBattle_Move
 
   def pbShowAnimation(id,user,targets,hitNum=0,showAnimation=true)
     super
-    if @id == :AROMATHERAPY
+    if isConst?(@id,PBMoves,:AROMATHERAPY)
       @battle.pbDisplay(_INTL("A soothing aroma wafted through the area!"))
-    elsif @id == :HEALBELL
+    elsif isConst?(@id,PBMoves,:HEALBELL)
       @battle.pbDisplay(_INTL("A bell chimed!"))
     end
   end
@@ -1203,7 +1217,7 @@ class PokeBattle_Move_044 < PokeBattle_TargetStatDownMove
   end
 
   def pbBaseDamage(baseDmg,user,target)
-    if @id == :BULLDOZE && @battle.field.terrain==PBBattleTerrains::Grassy
+    if isConst?(@id,PBMoves,:BULLDOZE) && @battle.field.terrain==PBBattleTerrains::Grassy
       baseDmg = (baseDmg/2.0).round
     end
     return baseDmg
@@ -1254,7 +1268,7 @@ end
 class PokeBattle_Move_048 < PokeBattle_TargetStatDownMove
   def initialize(battle,move)
     super
-    @statDown = [PBStats::EVASION,(MECHANICS_GENERATION >= 6) ? 2 : 1]
+    @statDown = [PBStats::EVASION,(NEWEST_BATTLE_MECHANICS) ? 2 : 1]
   end
 end
 
@@ -1284,13 +1298,11 @@ class PokeBattle_Move_049 < PokeBattle_TargetStatDownMove
                     targetSide.effects[PBEffects::Spikes]>0 ||
                     targetSide.effects[PBEffects::ToxicSpikes]>0 ||
                     targetSide.effects[PBEffects::StickyWeb]
-    return false if MECHANICS_GENERATION >= 6 &&
+    return false if NEWEST_BATTLE_MECHANICS &&
                     (targetOpposingSide.effects[PBEffects::StealthRock] ||
                     targetOpposingSide.effects[PBEffects::Spikes]>0 ||
                     targetOpposingSide.effects[PBEffects::ToxicSpikes]>0 ||
                     targetOpposingSide.effects[PBEffects::StickyWeb])
-    return false if MECHANICS_GENERATION >= 8 &&
-                    @battle.field.terrain != PBBattleTerrains::None
     return super
   end
 
@@ -1319,45 +1331,32 @@ class PokeBattle_Move_049 < PokeBattle_TargetStatDownMove
       @battle.pbDisplay(_INTL("{1} is no longer protected by Safeguard!!",target.pbTeam))
     end
     if target.pbOwnSide.effects[PBEffects::StealthRock] ||
-       (MECHANICS_GENERATION >= 6 &&
+       (NEWEST_BATTLE_MECHANICS &&
        target.pbOpposingSide.effects[PBEffects::StealthRock])
       target.pbOwnSide.effects[PBEffects::StealthRock]      = false
-      target.pbOpposingSide.effects[PBEffects::StealthRock] = false if MECHANICS_GENERATION >= 6
+      target.pbOpposingSide.effects[PBEffects::StealthRock] = false if NEWEST_BATTLE_MECHANICS
       @battle.pbDisplay(_INTL("{1} blew away stealth rocks!",user.pbThis))
     end
     if target.pbOwnSide.effects[PBEffects::Spikes]>0 ||
-       (MECHANICS_GENERATION >= 6 &&
+       (NEWEST_BATTLE_MECHANICS &&
        target.pbOpposingSide.effects[PBEffects::Spikes]>0)
       target.pbOwnSide.effects[PBEffects::Spikes]      = 0
-      target.pbOpposingSide.effects[PBEffects::Spikes] = 0 if MECHANICS_GENERATION >= 6
+      target.pbOpposingSide.effects[PBEffects::Spikes] = 0 if NEWEST_BATTLE_MECHANICS
       @battle.pbDisplay(_INTL("{1} blew away spikes!",user.pbThis))
     end
     if target.pbOwnSide.effects[PBEffects::ToxicSpikes]>0 ||
-       (MECHANICS_GENERATION >= 6 &&
+       (NEWEST_BATTLE_MECHANICS &&
        target.pbOpposingSide.effects[PBEffects::ToxicSpikes]>0)
       target.pbOwnSide.effects[PBEffects::ToxicSpikes]      = 0
-      target.pbOpposingSide.effects[PBEffects::ToxicSpikes] = 0 if MECHANICS_GENERATION >= 6
+      target.pbOpposingSide.effects[PBEffects::ToxicSpikes] = 0 if NEWEST_BATTLE_MECHANICS
       @battle.pbDisplay(_INTL("{1} blew away poison spikes!",user.pbThis))
     end
     if target.pbOwnSide.effects[PBEffects::StickyWeb] ||
-       (MECHANICS_GENERATION >= 6 &&
+       (NEWEST_BATTLE_MECHANICS &&
        target.pbOpposingSide.effects[PBEffects::StickyWeb])
       target.pbOwnSide.effects[PBEffects::StickyWeb]      = false
-      target.pbOpposingSide.effects[PBEffects::StickyWeb] = false if MECHANICS_GENERATION >= 6
+      target.pbOpposingSide.effects[PBEffects::StickyWeb] = false if NEWEST_BATTLE_MECHANICS
       @battle.pbDisplay(_INTL("{1} blew away sticky webs!",user.pbThis))
-    end
-    if MECHANICS_GENERATION >= 8 && @battle.field.terrain != PBBattleTerrains::None
-      case @battle.field.terrain
-      when PBBattleTerrains::Electric
-        @battle.pbDisplay(_INTL("The electricity disappeared from the battlefield."))
-      when PBBattleTerrains::Grassy
-        @battle.pbDisplay(_INTL("The grass disappeared from the battlefield."))
-      when PBBattleTerrains::Misty
-        @battle.pbDisplay(_INTL("The mist disappeared from the battlefield."))
-      when PBBattleTerrains::Psychic
-        @battle.pbDisplay(_INTL("The weirdness disappeared from the battlefield."))
-      end
-      @battle.field.terrain = PBBattleTerrains::None
     end
   end
 end
@@ -1407,7 +1406,7 @@ class PokeBattle_Move_04D < PokeBattle_TargetStatDownMove
   def initialize(battle,move)
     super
     inc = 2
-    inc = 1 if @id == :STRINGSHOT && MECHANICS_GENERATION <= 5
+    inc = 1 if isConst?(@id,PBMoves,:STRINGSHOT) && !NEWEST_BATTLE_MECHANICS
     @statDown = [PBStats::SPEED,inc]
   end
 end
@@ -1561,7 +1560,7 @@ class PokeBattle_Move_055 < PokeBattle_Move
 
   def pbEffectAgainstTarget(user,target)
     PBStats.eachBattleStat { |s| user.stages[s] = target.stages[s] }
-    if NEW_CRITICAL_HIT_RATE_MECHANICS
+    if NEWEST_BATTLE_MECHANICS
       user.effects[PBEffects::FocusEnergy] = target.effects[PBEffects::FocusEnergy]
       user.effects[PBEffects::LaserFocus]  = target.effects[PBEffects::LaserFocus]
     end
@@ -1706,11 +1705,11 @@ class PokeBattle_Move_05C < PokeBattle_Move
   end
 
   def pbFailsAgainstTarget?(user,target)
-    lastMoveData = GameData::Move.try_get(target.lastRegularMoveUsed)
-    if !lastMoveData ||
+    lastMoveData = pbGetMoveData(target.lastRegularMoveUsed)
+    if target.lastRegularMoveUsed<=0 ||
        user.pbHasMove?(target.lastRegularMoveUsed) ||
-       @moveBlacklist.include?(lastMoveData.function_code) ||
-       lastMoveData.type == :SHADOW
+       @moveBlacklist.include?(lastMoveData[MOVE_FUNCTION_CODE]) ||
+       isConst?(lastMoveData[MOVE_TYPE],PBTypes,:SHADOW)
       @battle.pbDisplay(_INTL("But it failed!"))
       return true
     end
@@ -1720,9 +1719,10 @@ class PokeBattle_Move_05C < PokeBattle_Move
   def pbEffectAgainstTarget(user,target)
     user.eachMoveWithIndex do |m,i|
       next if m.id!=@id
-      newMove = Pokemon::Move.new(target.lastRegularMoveUsed)
-      user.moves[i] = PokeBattle_Move.from_pokemon_move(@battle,newMove)
-      @battle.pbDisplay(_INTL("{1} learned {2}!",user.pbThis,newMove.name))
+      newMove = PBMove.new(target.lastRegularMoveUsed)
+      user.moves[i] = PokeBattle_Move.pbFromPBMove(@battle,newMove)
+      @battle.pbDisplay(_INTL("{1} learned {2}!",user.pbThis,
+         PBMoves.getName(target.lastRegularMoveUsed)))
       user.pbCheckFormOnMovesetChange
       break
     end
@@ -1756,11 +1756,11 @@ class PokeBattle_Move_05D < PokeBattle_Move
   end
 
   def pbFailsAgainstTarget?(user,target)
-    lastMoveData = GameData::Move.try_get(target.lastRegularMoveUsed)
-    if !lastMoveData ||
+    lastMoveData = pbGetMoveData(target.lastRegularMoveUsed)
+    if target.lastRegularMoveUsed<=0 ||
        user.pbHasMove?(target.lastRegularMoveUsed) ||
-       @moveBlacklist.include?(lastMoveData.function_code) ||
-       lastMoveData.type = :SHADOW
+       @moveBlacklist.include?(lastMoveData[MOVE_FUNCTION_CODE]) ||
+       isConst?(lastMoveData[MOVE_TYPE],PBTypes,:SHADOW)
       @battle.pbDisplay(_INTL("But it failed!"))
       return true
     end
@@ -1770,10 +1770,11 @@ class PokeBattle_Move_05D < PokeBattle_Move
   def pbEffectAgainstTarget(user,target)
     user.eachMoveWithIndex do |m,i|
       next if m.id!=@id
-      newMove = Pokemon::Move.new(target.lastRegularMoveUsed)
+      newMove = PBMove.new(target.lastRegularMoveUsed)
       user.pokemon.moves[i] = newMove
-      user.moves[i] = PokeBattle_Move.from_pokemon_move(@battle,newMove)
-      @battle.pbDisplay(_INTL("{1} learned {2}!",user.pbThis,newMove.name))
+      user.moves[i] = PokeBattle_Move.pbFromPBMove(@battle,newMove)
+      @battle.pbDisplay(_INTL("{1} learned {2}!",user.pbThis,
+         PBMoves.getName(target.lastRegularMoveUsed)))
       user.pbCheckFormOnMovesetChange
       break
     end
@@ -1796,7 +1797,7 @@ class PokeBattle_Move_05E < PokeBattle_Move
     userTypes = user.pbTypes(true)
     @newTypes = []
     user.eachMoveWithIndex do |m,i|
-      break if MECHANICS_GENERATION >= 6 && i>0
+      break if NEWEST_BATTLE_MECHANICS && i>0
       next if PBTypes.isPseudoType?(m.type)
       next if userTypes.include?(m.type)
       @newTypes.push(m.type) if !@newTypes.include?(m.type)
@@ -1811,7 +1812,7 @@ class PokeBattle_Move_05E < PokeBattle_Move
   def pbEffectGeneral(user)
     newType = @newTypes[@battle.pbRandom(@newTypes.length)]
     user.pbChangeTypes(newType)
-    typeName = GameData::Item.get(newType).name
+    typeName = PBTypes.getName(newType)
     @battle.pbDisplay(_INTL("{1} transformed into the {2} type!",user.pbThis,typeName))
   end
 end
@@ -1825,7 +1826,7 @@ end
 class PokeBattle_Move_05F < PokeBattle_Move
   def ignoresSubstitute?(user); return true; end
 
-  def pbMoveFailed?(user, targets)
+  def pbMoveFailed?(user,targets)
     if !user.canChangeType?
       @battle.pbDisplay(_INTL("But it failed!"))
       return true
@@ -1833,19 +1834,21 @@ class PokeBattle_Move_05F < PokeBattle_Move
     return false
   end
 
-  def pbFailsAgainstTarget?(user, target)
-    if !target.lastMoveUsed || !target.lastMoveUsedType ||
-       PBTypes.isPseudoType?(target.lastMoveUsedType)
+  def pbFailsAgainstTarget?(user,target)
+    if target.lastMoveUsed<=0 ||
+       target.lastMoveUsedType<0 ||
+       PBTypes.isPseudoType?(pbGetMoveData(target.lastMoveUsed,MOVE_TYPE))
       @battle.pbDisplay(_INTL("But it failed!"))
       return true
     end
     @newTypes = []
-    GameData::Type.each do |t|
-      next if t.pseudo_type || user.pbHasType?(t.id) ||
-              !PBTypes.resistant?(target.lastMoveUsedType, t.id)
-      @newTypes.push(t.id)
+    for i in 0..PBTypes.maxValue
+      next if PBTypes.isPseudoType?(i)
+      next if user.pbHasType?(i)
+      next if !PBTypes.resistant?(target.lastMoveUsedType,i)
+      @newTypes.push(i)
     end
-    if @newTypes.length == 0
+    if @newTypes.length==0
       @battle.pbDisplay(_INTL("But it failed!"))
       return true
     end
@@ -1855,8 +1858,8 @@ class PokeBattle_Move_05F < PokeBattle_Move
   def pbEffectGeneral(user)
     newType = @newTypes[@battle.pbRandom(@newTypes.length)]
     user.pbChangeTypes(newType)
-    typeName = GameData::Type.get(newType).name
-    @battle.pbDisplay(_INTL("{1} transformed into the {2} type!", user.pbThis, typeName))
+    typeName = PBTypes.getName(newType)
+    @battle.pbDisplay(_INTL("{1} transformed into the {2} type!",user.pbThis,typeName))
   end
 end
 
@@ -1871,59 +1874,49 @@ class PokeBattle_Move_060 < PokeBattle_Move
       @battle.pbDisplay(_INTL("But it failed!"))
       return true
     end
-    @newType = :NORMAL
+    @newType = getID(PBTypes,:NORMAL)
     checkedTerrain = false
     case @battle.field.terrain
     when PBBattleTerrains::Electric
-      if GameData::Type.exists?(:ELECTRIC)
-        @newType = :ELECTRIC
-        checkedTerrain = true
+      if hasConst?(PBTypes,:ELECTRIC)
+        @newType = getID(PBTypes,:ELECTRIC); checkedTerrain = true
       end
     when PBBattleTerrains::Grassy
-      if GameData::Type.exists?(:GRASS)
-        @newType = :GRASS
-        checkedTerrain = true
+      if hasConst?(PBTypes,:GRASS)
+        @newType = getID(PBTypes,:GRASS); checkedTerrain = true
       end
     when PBBattleTerrains::Misty
-      if GameData::Type.exists?(:FAIRY)
-        @newType = :FAIRY
-        checkedTerrain = true
+      if hasConst?(PBTypes,:FAIRY)
+        @newType = getID(PBTypes,:FAIRY); checkedTerrain = true
       end
     when PBBattleTerrains::Psychic
-      if GameData::Type.exists?(:PSYCHIC)
-        @newType = :PSYCHIC
-        checkedTerrain = true
+      if hasConst?(PBTypes,:PSYCHIC)
+        @newType = getID(PBTypes,:PSYCHIC); checkedTerrain = true
       end
     end
     if !checkedTerrain
       case @battle.environment
-      when PBEnvironment::Grass, PBEnvironment::TallGrass
-        @newType = :GRASS
-      when PBEnvironment::MovingWater, PBEnvironment::StillWater,
-           PBEnvironment::Puddle, PBEnvironment::Underwater
-        @newType = :WATER
-      when PBEnvironment::Cave
-        @newType = :ROCK
-      when PBEnvironment::Rock, PBEnvironment::Sand
-        @newType = :GROUND
-      when PBEnvironment::Forest, PBEnvironment::ForestGrass
-        @newType = :BUG
-      when PBEnvironment::Snow, PBEnvironment::Ice
-        @newType = :ICE
-      when PBEnvironment::Volcano
-        @newType = :FIRE
-      when PBEnvironment::Graveyard
-        @newType = :GHOST
-      when PBEnvironment::Sky
-        @newType = :FLYING
-      when PBEnvironment::Space
-        @newType = :DRAGON
-      when PBEnvironment::UltraSpace
-        @newType = :PSYCHIC
+      when PBEnvironment::Grass;       @newType = getID(PBTypes,:GRASS)
+      when PBEnvironment::TallGrass;   @newType = getID(PBTypes,:GRASS)
+      when PBEnvironment::MovingWater; @newType = getID(PBTypes,:WATER)
+      when PBEnvironment::StillWater;  @newType = getID(PBTypes,:WATER)
+      when PBEnvironment::Puddle;      @newType = getID(PBTypes,:WATER)
+      when PBEnvironment::Underwater;  @newType = getID(PBTypes,:WATER)
+      when PBEnvironment::Cave;        @newType = getID(PBTypes,:ROCK)
+      when PBEnvironment::Rock;        @newType = getID(PBTypes,:GROUND)
+      when PBEnvironment::Sand;        @newType = getID(PBTypes,:GROUND)
+      when PBEnvironment::Forest;      @newType = getID(PBTypes,:BUG)
+      when PBEnvironment::ForestGrass; @newType = getID(PBTypes,:BUG)
+      when PBEnvironment::Snow;        @newType = getID(PBTypes,:ICE)
+      when PBEnvironment::Ice;         @newType = getID(PBTypes,:ICE)
+      when PBEnvironment::Volcano;     @newType = getID(PBTypes,:FIRE)
+      when PBEnvironment::Graveyard;   @newType = getID(PBTypes,:GHOST)
+      when PBEnvironment::Sky;         @newType = getID(PBTypes,:FLYING)
+      when PBEnvironment::Space;       @newType = getID(PBTypes,:DRAGON)
+      when PBEnvironment::UltraSpace;  @newType = getID(PBTypes,:PSYCHIC)
       end
     end
-    @newType = :NORMAL if !GameData::Type.exists?(@newType)
-    if !GameData::Type.exists?(@newType) || !user.pbHasOtherType?(@newType)
+    if !user.pbHasOtherType?(@newType)
       @battle.pbDisplay(_INTL("But it failed!"))
       return true
     end
@@ -1932,7 +1925,7 @@ class PokeBattle_Move_060 < PokeBattle_Move
 
   def pbEffectGeneral(user)
     user.pbChangeTypes(@newType)
-    typeName = GameData::Type.get(@newType).name
+    typeName = PBTypes.getName(@newType)
     @battle.pbDisplay(_INTL("{1} transformed into the {2} type!",user.pbThis,typeName))
   end
 end
@@ -1944,8 +1937,8 @@ end
 #===============================================================================
 class PokeBattle_Move_061 < PokeBattle_Move
   def pbFailsAgainstTarget?(user,target)
-    if !target.canChangeType? || !GameData::Type.exists?(:WATER) ||
-       !target.pbHasOtherType?(:WATER)
+    if !target.canChangeType? ||
+       !target.pbHasOtherType?(getConst(PBTypes,:WATER))
       @battle.pbDisplay(_INTL("But it failed!"))
       return true
     end
@@ -1953,8 +1946,9 @@ class PokeBattle_Move_061 < PokeBattle_Move
   end
 
   def pbEffectAgainstTarget(user,target)
-    target.pbChangeTypes(:WATER)
-    typeName = GameData::Type.get(:WATER).name
+    newType = getConst(PBTypes,:WATER)
+    target.pbChangeTypes(newType)
+    typeName = PBTypes.getName(newType)
     @battle.pbDisplay(_INTL("{1} transformed into the {2} type!",target.pbThis,typeName))
   end
 end
@@ -2003,7 +1997,7 @@ end
 #===============================================================================
 class PokeBattle_Move_063 < PokeBattle_Move
   def pbMoveFailed?(user,targets)
-    if !GameData::Ability.exists?(:SIMPLE)
+    if !hasConst?(PBAbilities,:SIMPLE)   # Ability isn't defined
       @battle.pbDisplay(_INTL("But it failed!"))
       return true
     end
@@ -2011,7 +2005,9 @@ class PokeBattle_Move_063 < PokeBattle_Move
   end
 
   def pbFailsAgainstTarget?(user,target)
-    if target.unstoppableAbility? || [:TRUANT, :SIMPLE].include?(target.ability)
+    if target.unstoppableAbility? ||
+       isConst?(target.ability, PBAbilities, :TRUANT) ||   # For some reason
+       isConst?(target.ability, PBAbilities, :SIMPLE)
       @battle.pbDisplay(_INTL("But it failed!"))
       return true
     end
@@ -2021,7 +2017,7 @@ class PokeBattle_Move_063 < PokeBattle_Move
   def pbEffectAgainstTarget(user,target)
     @battle.pbShowAbilitySplash(target,true,false)
     oldAbil = target.ability
-    target.ability = :SIMPLE
+    target.ability = getConst(PBAbilities,:SIMPLE)
     @battle.pbReplaceAbilitySplash(target)
     @battle.pbDisplay(_INTL("{1} acquired {2}!",target.pbThis,target.abilityName))
     @battle.pbHideAbilitySplash(target)
@@ -2036,7 +2032,7 @@ end
 #===============================================================================
 class PokeBattle_Move_064 < PokeBattle_Move
   def pbMoveFailed?(user,targets)
-    if !GameData::Ability.exists?(:INSOMNIA)
+    if !hasConst?(PBAbilities,:INSOMNIA)   # Ability isn't defined
       @battle.pbDisplay(_INTL("But it failed!"))
       return true
     end
@@ -2044,7 +2040,9 @@ class PokeBattle_Move_064 < PokeBattle_Move
   end
 
   def pbFailsAgainstTarget?(user,target)
-    if target.unstoppableAbility? || [:TRUANT, :INSOMNIA].include?(target.ability_id)
+    if target.unstoppableAbility? ||
+       isConst?(target.ability, PBAbilities, :TRUANT) ||   # For some reason
+       isConst?(target.ability, PBAbilities, :INSOMNIA)
       @battle.pbDisplay(_INTL("But it failed!"))
       return true
     end
@@ -2054,7 +2052,7 @@ class PokeBattle_Move_064 < PokeBattle_Move
   def pbEffectAgainstTarget(user,target)
     @battle.pbShowAbilitySplash(target,true,false)
     oldAbil = target.ability
-    target.ability = :INSOMNIA
+    target.ability = getConst(PBAbilities,:INSOMNIA)
     @battle.pbReplaceAbilitySplash(target)
     @battle.pbDisplay(_INTL("{1} acquired {2}!",target.pbThis,target.abilityName))
     @battle.pbHideAbilitySplash(target)
@@ -2079,12 +2077,15 @@ class PokeBattle_Move_065 < PokeBattle_Move
   end
 
   def pbFailsAgainstTarget?(user,target)
-    if !target.ability || user.ability==target.ability
+    if target.ability==0 || user.ability==target.ability
       @battle.pbDisplay(_INTL("But it failed!"))
       return true
     end
     if target.ungainableAbility? ||
-       [:POWEROFALCHEMY, :RECEIVER, :TRACE, :WONDERGUARD].include?(target.ability_id)
+       isConst?(target.ability, PBAbilities, :POWEROFALCHEMY) ||
+       isConst?(target.ability, PBAbilities, :RECEIVER) ||
+       isConst?(target.ability, PBAbilities, :TRACE) ||
+       isConst?(target.ability, PBAbilities, :WONDERGUARD)
       @battle.pbDisplay(_INTL("But it failed!"))
       return true
     end
@@ -2111,12 +2112,14 @@ end
 #===============================================================================
 class PokeBattle_Move_066 < PokeBattle_Move
   def pbMoveFailed?(user,targets)
-    if !user.ability
+    if user.ability==0
       @battle.pbDisplay(_INTL("But it failed!"))
       return true
     end
     if user.ungainableAbility? ||
-       [:POWEROFALCHEMY, :RECEIVER, :TRACE].include?(user.ability_id)
+       isConst?(user.ability, PBAbilities, :POWEROFALCHEMY) ||
+       isConst?(user.ability, PBAbilities, :RECEIVER) ||
+       isConst?(user.ability, PBAbilities, :TRACE)
       @battle.pbDisplay(_INTL("But it failed!"))
       return true
     end
@@ -2124,7 +2127,7 @@ class PokeBattle_Move_066 < PokeBattle_Move
   end
 
   def pbFailsAgainstTarget?(user,target)
-    if target.unstoppableAbility? || target.ability == :TRUANT
+    if target.unstoppableAbility? || isConst?(target.ability, PBAbilities, :TRUANT)
       @battle.pbDisplay(_INTL("But it failed!"))
       return true
     end
@@ -2152,7 +2155,7 @@ class PokeBattle_Move_067 < PokeBattle_Move
   def ignoresSubstitute?(user); return true; end
 
   def pbMoveFailed?(user,targets)
-    if !user.ability
+    if user.ability==0
       @battle.pbDisplay(_INTL("But it failed!"))
       return true
     end
@@ -2160,7 +2163,7 @@ class PokeBattle_Move_067 < PokeBattle_Move
       @battle.pbDisplay(_INTL("But it failed!"))
       return true
     end
-    if user.ungainableAbility? || user.ability == :WONDERGUARD
+    if user.ungainableAbility? || isConst?(user.ability, PBAbilities, :WONDERGUARD)
       @battle.pbDisplay(_INTL("But it failed!"))
       return true
     end
@@ -2168,8 +2171,8 @@ class PokeBattle_Move_067 < PokeBattle_Move
   end
 
   def pbFailsAgainstTarget?(user,target)
-    if !target.ability ||
-       (user.ability == target.ability && MECHANICS_GENERATION <= 5)
+    if target.ability==0 ||
+       (user.ability==target.ability && !NEWEST_BATTLE_MECHANICS)
       @battle.pbDisplay(_INTL("But it failed!"))
       return true
     end
@@ -2177,7 +2180,7 @@ class PokeBattle_Move_067 < PokeBattle_Move
       @battle.pbDisplay(_INTL("But it failed!"))
       return true
     end
-    if target.ungainableAbility? || target.ability == :WONDERGUARD
+    if target.ungainableAbility? || isConst?(target.ability, PBAbilities, :WONDERGUARD)
       @battle.pbDisplay(_INTL("But it failed!"))
       return true
     end
@@ -2353,7 +2356,7 @@ end
 # OHKO. Accuracy increases by difference between levels of user and target.
 #===============================================================================
 class PokeBattle_Move_070 < PokeBattle_FixedDamageMove
-  def hitsDiggingTargets?; return @id == :FISSURE; end
+  def hitsDiggingTargets?; return isConst?(@id,PBMoves,:FISSURE); end
 
   def pbFailsAgainstTarget?(user,target)
     if target.level>user.level
@@ -2371,7 +2374,8 @@ class PokeBattle_Move_070 < PokeBattle_FixedDamageMove
       @battle.pbHideAbilitySplash(target)
       return true
     end
-    if MECHANICS_GENERATION >= 7 && @id == :SHEERCOLD && target.pbHasType?(:ICE)
+    if NEWEST_BATTLE_MECHANICS &&
+       isConst?(target.damageState.typeMod,PBTypes,:ICE) && target.pbHasType?(:ICE)
       @battle.pbDisplay(_INTL("But it failed!"))
       return true
     end
@@ -2380,7 +2384,8 @@ class PokeBattle_Move_070 < PokeBattle_FixedDamageMove
 
   def pbAccuracyCheck(user,target)
     acc = @accuracy+user.level-target.level
-    acc -= 10 if MECHANICS_GENERATION >= 7 && @id == :SHEERCOLD && !user.pbHasType?(:ICE)
+    acc -= 10 if NEWEST_BATTLE_MECHANICS && isConst?(@id,PBMoves,:SHEERCOLD) &&
+                                            !user.pbHasType?(:ICE)
     return @battle.pbRandom(100)<acc
   end
 
@@ -2699,7 +2704,7 @@ end
 # Burn's halving of Attack is negated (new mechanics).
 #===============================================================================
 class PokeBattle_Move_07E < PokeBattle_Move
-  def damageReducedByBurn?; return MECHANICS_GENERATION <= 5; end
+  def damageReducedByBurn?; return !NEWEST_BATTLE_MECHANICS; end
 
   def pbBaseDamage(baseDmg,user,target)
     baseDmg *= 2 if user.poisoned? || user.burned? || user.paralyzed?

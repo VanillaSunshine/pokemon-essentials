@@ -1,22 +1,26 @@
 def pbBaseStatTotal(species)
-  baseStats = GameData::Species.get(species).base_stats
+  baseStats = pbGetSpeciesData(species,0,SpeciesBaseStats)
   ret = 0
   baseStats.each { |s| ret += s }
   return ret
 end
 
 def pbBalancedLevelFromBST(species)
-  return (113 - (pbBaseStatTotal(species) * 0.072)).round
+  return (113-(pbBaseStatTotal(species)*0.072)).round
 end
 
-def pbTooTall?(pkmn, maxHeightInMeters)
-  height = (pkmn.is_a?(Pokemon)) ? pkmn.height : GameData::Species.get(pkmn).height
-  return height > (maxHeightInMeters * 10).round
+def pbTooTall?(pkmn,maxHeightInMeters)
+  species = (pkmn.is_a?(PokeBattle_Pokemon)) ? pkmn.species : pkmn
+  form    = (pkmn.is_a?(PokeBattle_Pokemon)) ? pkmn.form : 0
+  height = pbGetSpeciesData(species,form,SpeciesHeight)
+  return height>(maxHeightInMeters*10).round
 end
 
-def pbTooHeavy?(pkmn, maxWeightInKg)
-  weight = (pkmn.is_a?(Pokemon)) ? pkmn.weight : GameData::Species.get(pkmn).weight
-  return weight > (maxWeightInKg * 10).round
+def pbTooHeavy?(pkmn,maxWeightInKg)
+  species = (pkmn.is_a?(PokeBattle_Pokemon)) ? pkmn.species : pkmn
+  form    = (pkmn.is_a?(PokeBattle_Pokemon)) ? pkmn.form : 0
+  weight = pbGetSpeciesData(species,form,SpeciesWeight)
+  return weight>(maxWeightInKg*10).round
 end
 
 
@@ -283,7 +287,10 @@ class SpeciesRestriction
   end
 
   def isSpecies?(species,specieslist)
-    return specieslist.include?(species)
+    for s in specieslist
+      return true if isConst?(species,PBSpecies,s)
+    end
+    return false
   end
 
   def isValid?(pokemon)
@@ -303,7 +310,10 @@ class BannedSpeciesRestriction
   end
 
   def isSpecies?(species,specieslist)
-    return specieslist.include?(species)
+    for s in specieslist
+      return true if isConst?(species,PBSpecies,s)
+    end
+    return false
   end
 
   def isValid?(pokemon)
@@ -318,17 +328,20 @@ end
 
 
 class BannedItemRestriction
-  def initialize(*itemlist)
-    @itemlist=itemlist.clone
+  def initialize(*specieslist)
+    @specieslist=specieslist.clone
   end
 
-  def isSpecies?(item,itemlist)
-    return itemlist.include?(item)
+  def isSpecies?(species,specieslist)
+    for s in specieslist
+      return true if isConst?(species,PBItems,s)
+    end
+    return false
   end
 
   def isValid?(pokemon)
     count=0
-    if pokemon.item && isSpecies?(pokemon.item,@itemlist)
+    if pokemon.item!=0 && isSpecies?(pokemon.item,@specieslist)
       count+=1
     end
     return count==0
@@ -344,7 +357,10 @@ class RestrictedSpeciesRestriction
   end
 
   def isSpecies?(species,specieslist)
-    return specieslist.include?(species)
+    for s in specieslist
+      return true if isConst?(species,PBSpecies,s)
+    end
+    return false
   end
 
   def isValid?(team)
@@ -377,22 +393,30 @@ end
 
 
 class StandardRestriction
-  def isValid?(pkmn)
-    return false if !pkmn || pkmn.egg?
+  def isValid?(pokemon)
+    return false if !pokemon || pokemon.egg?
     # Species with disadvantageous abilities are not banned
-    pkmn.species_data.abilities.each do |a|
-      return true if [:TRUANT, :SLOWSTART].include?(a[0])
+    abilities = pbGetSpeciesData(pokemon.species,pokemon.form,SpeciesAbilities)
+    abilities = [abilities] if !abilities.is_a?(Array)
+    abilities.each do |a|
+      return true if isConst?(a,PBAbilities,:TRUANT) ||
+                     isConst?(a,PBAbilities,:SLOWSTART)
     end
     # Certain named species are not banned
-    speciesWhitelist = [:DRAGONITE, :SALAMENCE, :TYRANITAR]
-    return true if speciesWhitelist.include?(pkmn.species)
+    speciesWhitelist = [:DRAGONITE,:SALAMENCE,:TYRANITAR]
+    for i in speciesWhitelist
+      return true if pokemon.isSpecies?(i)
+    end
     # Certain named species are banned
-    speciesBlacklist = [:WYNAUT, :WOBBUFFET]
-    return false if speciesBlacklist.include?(pkmn.species)
+    speciesBlacklist = [:WYNAUT,:WOBBUFFET]
+    for i in speciesBlacklist
+      return false if pokemon.isSpecies?(i)
+    end
     # Species with total base stat 600 or more are banned
+    baseStats = pbGetSpeciesData(pokemon.species,pokemon.form,SpeciesBaseStats)
     bst = 0
-    pkmn.baseStats.each { |s| bst += s }
-    return false if bst >= 600
+    baseStats.each { |s| bst += s }
+    return false if bst>=600
     # Is valid
     return true
   end
@@ -554,7 +578,7 @@ $canEvolve       = {}
 class BabyRestriction
   def isValid?(pokemon)
     baby=$babySpeciesData[pokemon.species] ? $babySpeciesData[pokemon.species] :
-       ($babySpeciesData[pokemon.species]=EvolutionHelper.baby_species(pokemon.species))
+       ($babySpeciesData[pokemon.species]=pbGetBabySpecies(pokemon.species))
     return baby==pokemon.species
   end
 end
@@ -564,10 +588,10 @@ end
 class UnevolvedFormRestriction
   def isValid?(pokemon)
     baby=$babySpeciesData[pokemon.species] ? $babySpeciesData[pokemon.species] :
-       ($babySpeciesData[pokemon.species]=EvolutionHelper.baby_species(pokemon.species))
+       ($babySpeciesData[pokemon.species]=pbGetBabySpecies(pokemon.species))
     return false if baby!=pokemon.species
     canEvolve=($canEvolve[pokemon.species]!=nil) ? $canEvolve[pokemon.species] :
-       ($canEvolve[pokemon.species]=(EvolutionHelper.evolutions(pokemon.species, true).length!=0))
+       ($canEvolve[pokemon.species]=(pbGetEvolvedFormData(pokemon.species,true).length!=0))
     return false if !canEvolve
     return true
   end
@@ -612,23 +636,28 @@ end
 
 
 module NicknameChecker
-  @@names = {}
+  @@names={}
+  @@namesMaxValue=0
 
   def getName(species)
-    n = @@names[species]
+    n=@@names[species]
     return n if n
-    n = GameData::Species.get(species).name
-    @@names[species] = n.upcase
+    n=PBSpecies.getName(species)
+    @@names[species]=n.upcase
     return n
   end
 
-  def check(name, species)
-    name = name.upcase
-    return true if name == getName(species)
-    return false if @@names.values.include?(name)
-    GameData::Species.each do |species_data|
-      next if species_data.species == species || species_data.form != 0
-      return false if getName(species_data.id) == name
+  def check(name,species)
+    name=name.upcase
+    return true if name==getName(species)
+    if @@names.values.include?(name)
+      return false
+    end
+    for i in @@namesMaxValue..PBSpecies.maxValue
+      if i!=species
+        n=getName(i)
+        return false if n==name
+      end
     end
     return true
   end

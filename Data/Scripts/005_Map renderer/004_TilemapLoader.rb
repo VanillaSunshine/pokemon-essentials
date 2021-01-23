@@ -17,7 +17,7 @@ class TilemapLoader
       if Tilemap.method_defined?(:passages)
         setClass(CustomTilemap)
       else
-        setClass(SynchronizedTilemap)
+        setClass(($ResizeFactor==1.0) ? SynchronizedTilemap : CustomTilemap)
       end
     end
   end

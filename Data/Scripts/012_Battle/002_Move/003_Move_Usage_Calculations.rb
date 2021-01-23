@@ -4,7 +4,8 @@ class PokeBattle_Move
   #=============================================================================
   def pbBaseType(user)
     ret = @type
-    if ret && user.abilityActive?
+    return ret if !ret || ret<0
+    if user.abilityActive?
       ret = BattleHandlers.triggerMoveBaseTypeModifierAbility(user.ability,user,self,ret)
     end
     return ret
@@ -13,13 +14,14 @@ class PokeBattle_Move
   def pbCalcType(user)
     @powerBoost = false
     ret = pbBaseType(user)
-    if ret && GameData::Type.exists?(:ELECTRIC)
-      if @battle.field.effects[PBEffects::IonDeluge] && ret == :NORMAL
-        ret = :ELECTRIC
+    return ret if !ret || ret<0
+    if hasConst?(PBTypes,:ELECTRIC)
+      if @battle.field.effects[PBEffects::IonDeluge] && isConst?(ret,PBTypes,:NORMAL)
+        ret = getConst(PBTypes,:ELECTRIC)
         @powerBoost = false
       end
       if user.effects[PBEffects::Electrify]
-        ret = :ELECTRIC
+        ret = getConst(PBTypes,:ELECTRIC)
         @powerBoost = false
       end
     end
@@ -37,29 +39,30 @@ class PokeBattle_Move
     end
     # Foresight
     if user.hasActiveAbility?(:SCRAPPY) || target.effects[PBEffects::Foresight]
-      ret = PBTypeEffectiveness::NORMAL_EFFECTIVE_ONE if defType == :GHOST &&
+      ret = PBTypeEffectiveness::NORMAL_EFFECTIVE_ONE if isConst?(defType,PBTypes,:GHOST) &&
                                                          PBTypes.ineffective?(moveType,defType)
     end
     # Miracle Eye
     if target.effects[PBEffects::MiracleEye]
-      ret = PBTypeEffectiveness::NORMAL_EFFECTIVE_ONE if defType == :DARK &&
+      ret = PBTypeEffectiveness::NORMAL_EFFECTIVE_ONE if isConst?(defType,PBTypes,:DARK) &&
                                                          PBTypes.ineffective?(moveType,defType)
     end
     # Delta Stream's weather
     if @battle.pbWeather==PBWeather::StrongWinds
-      ret = PBTypeEffectiveness::NORMAL_EFFECTIVE_ONE if defType == :FLYING &&
+      ret = PBTypeEffectiveness::NORMAL_EFFECTIVE_ONE if isConst?(defType,PBTypes,:FLYING) &&
                                                          PBTypes.superEffective?(moveType,defType)
     end
     # Grounded Flying-type Pokémon become susceptible to Ground moves
     if !target.airborne?
-      ret = PBTypeEffectiveness::NORMAL_EFFECTIVE_ONE if defType == :FLYING && moveType == :GROUND
+      ret = PBTypeEffectiveness::NORMAL_EFFECTIVE_ONE if isConst?(defType,PBTypes,:FLYING) &&
+                                                         isConst?(moveType,PBTypes,:GROUND)
     end
     return ret
   end
 
   def pbCalcTypeMod(moveType,user,target)
-    return PBTypeEffectiveness::NORMAL_EFFECTIVE if !moveType
-    return PBTypeEffectiveness::NORMAL_EFFECTIVE if moveType == :GROUND &&
+    return PBTypeEffectiveness::NORMAL_EFFECTIVE if moveType<0
+    return PBTypeEffectiveness::NORMAL_EFFECTIVE if isConst?(moveType,PBTypes,:GROUND) &&
        target.pbHasType?(:FLYING) && target.hasActiveItem?(:IRONBALL)
     # Determine types
     tTypes = target.pbTypes(true)
@@ -88,27 +91,27 @@ class PokeBattle_Move
     baseAcc = pbBaseAccuracy(user,target)
     return true if baseAcc==0
     # Calculate all multiplier effects
-    modifiers = {}
-    modifiers[:base_accuracy]  = baseAcc
-    modifiers[:accuracy_stage] = user.stages[PBStats::ACCURACY]
-    modifiers[:evasion_stage]  = target.stages[PBStats::EVASION]
-    modifiers[:accuracy_multiplier] = 1.0
-    modifiers[:evasion_multiplier]  = 1.0
+    modifiers = []
+    modifiers[BASE_ACC]  = baseAcc
+    modifiers[ACC_STAGE] = user.stages[PBStats::ACCURACY]
+    modifiers[EVA_STAGE] = target.stages[PBStats::EVASION]
+    modifiers[ACC_MULT]  = 1.0
+    modifiers[EVA_MULT]  = 1.0
     pbCalcAccuracyModifiers(user,target,modifiers)
     # Check if move can't miss
-    return true if modifiers[:base_accuracy] == 0
+    return true if modifiers[BASE_ACC]==0
     # Calculation
-    accStage = [[modifiers[:accuracy_stage], -6].max, 6].min + 6
-    evaStage = [[modifiers[:evasion_stage], -6].max, 6].min + 6
+    accStage = [[modifiers[ACC_STAGE],-6].max,6].min + 6
+    evaStage = [[modifiers[EVA_STAGE],-6].max,6].min + 6
     stageMul = [3,3,3,3,3,3, 3, 4,5,6,7,8,9]
     stageDiv = [9,8,7,6,5,4, 3, 3,3,3,3,3,3]
     accuracy = 100.0 * stageMul[accStage] / stageDiv[accStage]
     evasion  = 100.0 * stageMul[evaStage] / stageDiv[evaStage]
-    accuracy = (accuracy * modifiers[:accuracy_multiplier]).round
-    evasion  = (evasion  * modifiers[:evasion_multiplier]).round
-    evasion = 1 if evasion < 1
+    accuracy = (accuracy * modifiers[ACC_MULT]).round
+    evasion  = (evasion  * modifiers[EVA_MULT]).round
+    evasion = 1 if evasion<1
     # Calculation
-    return @battle.pbRandom(100) < modifiers[:base_accuracy] * accuracy / evasion
+    return @battle.pbRandom(100) < modifiers[BASE_ACC] * accuracy / evasion
   end
 
   def pbCalcAccuracyModifiers(user,target,modifiers)
@@ -135,17 +138,16 @@ class PokeBattle_Move
       BattleHandlers.triggerAccuracyCalcTargetItem(target.item,
          modifiers,user,target,self,@calcType)
     end
-    # Other effects, inc. ones that set accuracy_multiplier or evasion_stage to
-    # specific values
-    if @battle.field.effects[PBEffects::Gravity] > 0
-      modifiers[:accuracy_multiplier] *= 5 / 3.0
+    # Other effects, inc. ones that set ACC_MULT or EVA_STAGE to specific values
+    if @battle.field.effects[PBEffects::Gravity]>0
+      modifiers[ACC_MULT] *= 5/3.0
     end
     if user.effects[PBEffects::MicleBerry]
       user.effects[PBEffects::MicleBerry] = false
-      modifiers[:accuracy_multiplier] *= 1.2
+      modifiers[ACC_MULT] *= 1.2
     end
-    modifiers[:evasion_stage] = 0 if target.effects[PBEffects::Foresight] && modifiers[:evasion_stage] > 0
-    modifiers[:evasion_stage] = 0 if target.effects[PBEffects::MiracleEye] && modifiers[:evasion_stage] > 0
+    modifiers[EVA_STAGE] = 0 if target.effects[PBEffects::Foresight] && modifiers[EVA_STAGE]>0
+    modifiers[EVA_STAGE] = 0 if target.effects[PBEffects::MiracleEye] && modifiers[EVA_STAGE]>0
   end
 
   #=============================================================================
@@ -161,7 +163,7 @@ class PokeBattle_Move
   def pbIsCritical?(user,target)
     return false if target.pbOwnSide.effects[PBEffects::LuckyChant]>0
     # Set up the critical hit ratios
-    ratios = (NEW_CRITICAL_HIT_RATE_MECHANICS) ? [24,8,2,1] : [16,8,4,3,2]
+    ratios = (NEWEST_BATTLE_MECHANICS) ? [24,8,2,1] : [16,8,4,3,2]
     c = 0
     # Ability effects that alter critical hit rate
     if c>=0 && user.abilityActive?
@@ -180,15 +182,15 @@ class PokeBattle_Move
     return false if c<0
     # Move-specific "always/never a critical hit" effects
     case pbCritialOverride(user,target)
-    when 1  then return true
-    when -1 then return false
+    when 1;  return true
+    when -1; return false
     end
     # Other effects
     return true if c>50   # Merciless
     return true if user.effects[PBEffects::LaserFocus]>0
     c += 1 if highCriticalRate?
     c += user.effects[PBEffects::FocusEnergy]
-    c += 1 if user.inHyperMode? && @type == :SHADOW
+    c += 1 if user.inHyperMode? && isConst?(@type,PBTypes,:SHADOW)
     c = ratios.length-1 if c>=ratios.length
     # Calculation
     return @battle.pbRandom(ratios[c])==0
@@ -224,7 +226,7 @@ class PokeBattle_Move
     stageMul = [2,2,2,2,2,2, 2, 3,4,5,6,7,8]
     stageDiv = [8,7,6,5,4,3, 2, 2,2,2,2,2,2]
     # Get the move's type
-    type = @calcType   # nil is treated as physical
+    type = @calcType   # -1 is treated as physical
     # Calculate whether this hit deals critical damage
     target.damageState.critical = pbIsCritical?(user,target)
     # Calcuate base power of move
@@ -242,30 +244,25 @@ class PokeBattle_Move
       defense = (defense.to_f*stageMul[defStage]/stageDiv[defStage]).floor
     end
     # Calculate all multiplier effects
-    multipliers = {
-      :base_damage_multiplier  => 1.0,
-      :attack_multiplier       => 1.0,
-      :defense_multiplier      => 1.0,
-      :final_damage_multiplier => 1.0
-    }
+    multipliers = [1.0, 1.0, 1.0, 1.0]
     pbCalcDamageMultipliers(user,target,numTargets,type,baseDmg,multipliers)
     # Main damage calculation
-    baseDmg = [(baseDmg * multipliers[:base_damage_multiplier]).round, 1].max
-    atk     = [(atk     * multipliers[:attack_multiplier]).round, 1].max
-    defense = [(defense * multipliers[:defense_multiplier]).round, 1].max
+    baseDmg = [(baseDmg * multipliers[BASE_DMG_MULT]).round, 1].max
+    atk     = [(atk     * multipliers[ATK_MULT]).round, 1].max
+    defense = [(defense * multipliers[DEF_MULT]).round, 1].max
     damage  = (((2.0 * user.level / 5 + 2).floor * baseDmg * atk / defense).floor / 50).floor + 2
-    damage  = [(damage  * multipliers[:final_damage_multiplier]).round, 1].max
+    damage  = [(damage  * multipliers[FINAL_DMG_MULT]).round, 1].max
     target.damageState.calcDamage = damage
   end
 
   def pbCalcDamageMultipliers(user,target,numTargets,type,baseDmg,multipliers)
     # Global abilities
-    if (@battle.pbCheckGlobalAbility(:DARKAURA) && type == :DARK) ||
-       (@battle.pbCheckGlobalAbility(:FAIRYAURA) && type == :FAIRY)
+    if (@battle.pbCheckGlobalAbility(:DARKAURA) && isConst?(type,PBTypes,:DARK)) ||
+       (@battle.pbCheckGlobalAbility(:FAIRYAURA) && isConst?(type,PBTypes,:FAIRY))
       if @battle.pbCheckGlobalAbility(:AURABREAK)
-        multipliers[:base_damage_multiplier] *= 2 / 3.0
+        multipliers[BASE_DMG_MULT] *= 2/3.0
       else
-        multipliers[:base_damage_multiplier] *= 4 / 3.0
+        multipliers[BASE_DMG_MULT] *= 4/3.0
       end
     end
     # Ability effects that alter damage
@@ -305,154 +302,160 @@ class PokeBattle_Move
     end
     # Parental Bond's second attack
     if user.effects[PBEffects::ParentalBond]==1
-      multipliers[:base_damage_multiplier] /= 4
+      multipliers[BASE_DMG_MULT] /= 4
     end
     # Other
     if user.effects[PBEffects::MeFirst]
-      multipliers[:base_damage_multiplier] *= 1.5
+      multipliers[BASE_DMG_MULT] *= 1.5
     end
     if user.effects[PBEffects::HelpingHand] && !self.is_a?(PokeBattle_Confusion)
-      multipliers[:base_damage_multiplier] *= 1.5
+      multipliers[BASE_DMG_MULT] *= 1.5
     end
-    if user.effects[PBEffects::Charge]>0 && type == :ELECTRIC
-      multipliers[:base_damage_multiplier] *= 2
+    if user.effects[PBEffects::Charge]>0 && isConst?(type,PBTypes,:ELECTRIC)
+      multipliers[BASE_DMG_MULT] *= 2
     end
     # Mud Sport
-    if type == :ELECTRIC
+    if isConst?(type,PBTypes,:ELECTRIC)
       @battle.eachBattler do |b|
         next if !b.effects[PBEffects::MudSport]
-        multipliers[:base_damage_multiplier] /= 3
+        multipliers[BASE_DMG_MULT] /= 3
         break
       end
       if @battle.field.effects[PBEffects::MudSportField]>0
-        multipliers[:base_damage_multiplier] /= 3
+        multipliers[BASE_DMG_MULT] /= 3
       end
     end
     # Water Sport
-    if type == :FIRE
+    if isConst?(type,PBTypes,:FIRE)
       @battle.eachBattler do |b|
         next if !b.effects[PBEffects::WaterSport]
-        multipliers[:base_damage_multiplier] /= 3
+        multipliers[BASE_DMG_MULT] /= 3
         break
       end
       if @battle.field.effects[PBEffects::WaterSportField]>0
-        multipliers[:base_damage_multiplier] /= 3
+        multipliers[BASE_DMG_MULT] /= 3
       end
     end
     # Terrain moves
     if user.affectedByTerrain?
       case @battle.field.terrain
       when PBBattleTerrains::Electric
-        multipliers[:base_damage_multiplier] *= 1.5 if type == :ELECTRIC
+        if isConst?(type,PBTypes,:ELECTRIC)
+          multipliers[BASE_DMG_MULT] *= 1.5
+        end
       when PBBattleTerrains::Grassy
-        multipliers[:base_damage_multiplier] *= 1.5 if type == :GRASS
+        if isConst?(type,PBTypes,:GRASS)
+          multipliers[BASE_DMG_MULT] *= 1.5
+        end
       when PBBattleTerrains::Psychic
-        multipliers[:base_damage_multiplier] *= 1.5 if type == :PSYCHIC
+        if isConst?(type,PBTypes,:PSYCHIC)
+          multipliers[BASE_DMG_MULT] *= 1.5
+        end
       end
     end
     if @battle.field.terrain==PBBattleTerrains::Misty && target.affectedByTerrain? &&
-       type == :DRAGON
-      multipliers[:base_damage_multiplier] /= 2
+       isConst?(type,PBTypes,:DRAGON)
+      multipliers[BASE_DMG_MULT] /= 2
     end
     # Badge multipliers
     if @battle.internalBattle
       if user.pbOwnedByPlayer?
-        if physicalMove? && @battle.pbPlayer.numbadges >= NUM_BADGES_BOOST_ATTACK
-          multipliers[:attack_multiplier] *= 1.1
-        elsif specialMove? && @battle.pbPlayer.numbadges >= NUM_BADGES_BOOST_SPATK
-          multipliers[:attack_multiplier] *= 1.1
+        if physicalMove? && @battle.pbPlayer.numbadges>=NUM_BADGES_BOOST_ATTACK
+          multipliers[ATK_MULT] *= 1.1
+        elsif specialMove? && @battle.pbPlayer.numbadges>=NUM_BADGES_BOOST_SPATK
+          multipliers[ATK_MULT] *= 1.1
         end
       end
       if target.pbOwnedByPlayer?
-        if physicalMove? && @battle.pbPlayer.numbadges >= NUM_BADGES_BOOST_DEFENSE
-          multipliers[:defense_multiplier] *= 1.1
-        elsif specialMove? && @battle.pbPlayer.numbadges >= NUM_BADGES_BOOST_SPDEF
-          multipliers[:defense_multiplier] *= 1.1
+        if physicalMove? && @battle.pbPlayer.numbadges>=NUM_BADGES_BOOST_DEFENSE
+          multipliers[DEF_MULT] *= 1.1
+        elsif specialMove? && @battle.pbPlayer.numbadges>=NUM_BADGES_BOOST_SPDEF
+          multipliers[DEF_MULT] *= 1.1
         end
       end
     end
     # Multi-targeting attacks
     if numTargets>1
-      multipliers[:final_damage_multiplier] *= 0.75
+      multipliers[FINAL_DMG_MULT] *= 0.75
     end
     # Weather
     case @battle.pbWeather
     when PBWeather::Sun, PBWeather::HarshSun
-      if type == :FIRE
-        multipliers[:final_damage_multiplier] *= 1.5
-      elsif type == :WATER
-        multipliers[:final_damage_multiplier] /= 2
+      if isConst?(type,PBTypes,:FIRE)
+        multipliers[FINAL_DMG_MULT] *= 1.5
+      elsif isConst?(type,PBTypes,:WATER)
+        multipliers[FINAL_DMG_MULT] /= 2
       end
     when PBWeather::Rain, PBWeather::HeavyRain
-      if type == :FIRE
-        multipliers[:final_damage_multiplier] /= 2
-      elsif type == :WATER
-        multipliers[:final_damage_multiplier] *= 1.5
+      if isConst?(type,PBTypes,:FIRE)
+        multipliers[FINAL_DMG_MULT] /= 2
+      elsif isConst?(type,PBTypes,:WATER)
+        multipliers[FINAL_DMG_MULT] *= 1.5
       end
     when PBWeather::Sandstorm
-      if target.pbHasType?(:ROCK) && specialMove? && @function != "122"   # Psyshock
-        multipliers[:defense_multiplier] *= 1.5
+      if target.pbHasType?(:ROCK) && specialMove? && @function!="122"   # Psyshock
+        multipliers[DEF_MULT] *= 1.5
       end
     end
     # Critical hits
     if target.damageState.critical
-      if NEW_CRITICAL_HIT_RATE_MECHANICS
-        multipliers[:final_damage_multiplier] *= 1.5
+      if NEWEST_BATTLE_MECHANICS
+        multipliers[FINAL_DMG_MULT] *= 1.5
       else
-        multipliers[:final_damage_multiplier] *= 2
+        multipliers[FINAL_DMG_MULT] *= 2
       end
     end
     # Random variance
     if !self.is_a?(PokeBattle_Confusion)
       random = 85+@battle.pbRandom(16)
-      multipliers[:final_damage_multiplier] *= random / 100.0
+      multipliers[FINAL_DMG_MULT] *= random/100.0
     end
     # STAB
-    if type && user.pbHasType?(type)
+    if type>=0 && user.pbHasType?(type)
       if user.hasActiveAbility?(:ADAPTABILITY)
-        multipliers[:final_damage_multiplier] *= 2
+        multipliers[FINAL_DMG_MULT] *= 2
       else
-        multipliers[:final_damage_multiplier] *= 1.5
+        multipliers[FINAL_DMG_MULT] *= 1.5
       end
     end
     # Type effectiveness
-    multipliers[:final_damage_multiplier] *= target.damageState.typeMod.to_f / PBTypeEffectiveness::NORMAL_EFFECTIVE
+    multipliers[FINAL_DMG_MULT] *= target.damageState.typeMod.to_f/PBTypeEffectiveness::NORMAL_EFFECTIVE
     # Burn
     if user.status==PBStatuses::BURN && physicalMove? && damageReducedByBurn? &&
        !user.hasActiveAbility?(:GUTS)
-      multipliers[:final_damage_multiplier] /= 2
+      multipliers[FINAL_DMG_MULT] /= 2
     end
     # Aurora Veil, Reflect, Light Screen
     if !ignoresReflect? && !target.damageState.critical &&
        !user.hasActiveAbility?(:INFILTRATOR)
-      if target.pbOwnSide.effects[PBEffects::AuroraVeil] > 0
+      if target.pbOwnSide.effects[PBEffects::AuroraVeil]>0
         if @battle.pbSideBattlerCount(target)>1
-          multipliers[:final_damage_multiplier] *= 2 / 3.0
+          multipliers[FINAL_DMG_MULT] *= 2/3.0
         else
-          multipliers[:final_damage_multiplier] /= 2
+          multipliers[FINAL_DMG_MULT] /= 2
         end
-      elsif target.pbOwnSide.effects[PBEffects::Reflect] > 0 && physicalMove?
+      elsif target.pbOwnSide.effects[PBEffects::Reflect]>0 && physicalMove?
         if @battle.pbSideBattlerCount(target)>1
-          multipliers[:final_damage_multiplier] *= 2 / 3.0
+          multipliers[FINAL_DMG_MULT] *= 2/3.0
         else
-          multipliers[:final_damage_multiplier] /= 2
+          multipliers[FINAL_DMG_MULT] /= 2
         end
-      elsif target.pbOwnSide.effects[PBEffects::LightScreen] > 0 && specialMove?
-        if @battle.pbSideBattlerCount(target) > 1
-          multipliers[:final_damage_multiplier] *= 2 / 3.0
+      elsif target.pbOwnSide.effects[PBEffects::LightScreen]>0 && specialMove?
+        if @battle.pbSideBattlerCount(target)>1
+          multipliers[FINAL_DMG_MULT] *= 2/3.0
         else
-          multipliers[:final_damage_multiplier] /= 2
+          multipliers[FINAL_DMG_MULT] /= 2
         end
       end
     end
     # Minimize
     if target.effects[PBEffects::Minimize] && tramplesMinimize?(2)
-      multipliers[:final_damage_multiplier] *= 2
+      multipliers[FINAL_DMG_MULT] *= 2
     end
     # Move-specific base damage modifiers
-    multipliers[:base_damage_multiplier] = pbBaseDamageMultiplier(multipliers[:base_damage_multiplier], user, target)
+    multipliers[BASE_DMG_MULT] = pbBaseDamageMultiplier(multipliers[BASE_DMG_MULT],user,target)
     # Move-specific final damage modifiers
-    multipliers[:final_damage_multiplier] = pbModifyDamage(multipliers[:final_damage_multiplier], user, target)
+    multipliers[FINAL_DMG_MULT] = pbModifyDamage(multipliers[FINAL_DMG_MULT],user,target)
   end
 
   #=============================================================================
@@ -461,7 +464,7 @@ class PokeBattle_Move
   def pbAdditionalEffectChance(user,target,effectChance=0)
     return 0 if target.hasActiveAbility?(:SHIELDDUST) && !@battle.moldBreaker
     ret = (effectChance>0) ? effectChance : @addlEffect
-    if MECHANICS_GENERATION >= 6 || @function != "0A4"   # Secret Power
+    if NEWEST_BATTLE_MECHANICS || @function!="0A4"   # Secret Power
       ret *= 2 if user.hasActiveAbility?(:SERENEGRACE) ||
                   user.pbOwnSide.effects[PBEffects::Rainbow]>0
     end

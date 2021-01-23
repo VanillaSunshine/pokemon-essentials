@@ -179,7 +179,7 @@ class CommandMenuDisplay < BattleMenuBase
 
   def refreshButtons
     return if !USE_GRAPHICS
-    for i in 0...@buttons.length
+    for i in 0...4
       button = @buttons[i]
       button.src_rect.x = (i==@index) ? @buttonBitmap.width/2 : 0
       button.src_rect.y = MODES[@mode][i]*BUTTON_HEIGHT
@@ -218,6 +218,7 @@ class FightMenuDisplay < BattleMenuBase
      Color.new(248,192,0),Color.new(144,104,0),    # Yellow, 1/2 of total PP or less
      TEXT_BASE_COLOR,TEXT_SHADOW_COLOR             # Black, more than 1/2 of total PP
   ]
+  MAX_MOVES = 4   # Number of moves to display at once
 
   def initialize(viewport,z)
     super(viewport)
@@ -238,7 +239,7 @@ class FightMenuDisplay < BattleMenuBase
       background.setBitmap("Graphics/Pictures/Battle/overlay_fight")
       addSprite("background",background)
       # Create move buttons
-      @buttons = Array.new(Pokemon::MAX_MOVES) do |i|
+      @buttons = Array.new(MAX_MOVES) do |i|
         button = SpriteWrapper.new(viewport)
         button.bitmap = @buttonBitmap.bitmap
         button.x      = self.x+4
@@ -336,21 +337,20 @@ class FightMenuDisplay < BattleMenuBase
     if !USE_GRAPHICS
       # Fill in command window
       commands = []
-      for i in 0...[4, moves.length].max
-        commands.push((moves[i]) ? moves[i].name : "-")
-      end
+      moves.each { |m| commands.push((m && m.id>0) ? m.name : "-") }
       @cmdWindow.commands = commands
       return
     end
     # Draw move names onto overlay
     @overlay.bitmap.clear
     textPos = []
-    @buttons.each_with_index do |button,i|
+    moves.each_with_index do |m,i|
+      button = @buttons[i]
       next if !@visibility["button_#{i}"]
       x = button.x-self.x+button.src_rect.width/2
       y = button.y-self.y+8
       moveNameBase = TEXT_BASE_COLOR
-      if moves[i].type>=0
+      if m.type>=0
         # NOTE: This takes a colour from a particular pixel in the button
         #       graphic and makes the move name's base colour that same colour.
         #       The pixel is at coordinates 10,34 in the button box. If you
@@ -358,7 +358,7 @@ class FightMenuDisplay < BattleMenuBase
         #       of code to ensure the font is an appropriate colour.
         moveNameBase = button.bitmap.get_pixel(10,button.src_rect.y+34)
       end
-      textPos.push([moves[i].name,x,y,2,moveNameBase,TEXT_SHADOW_COLOR])
+      textPos.push([m.name,x,y,2,moveNameBase,TEXT_SHADOW_COLOR])
     end
     pbDrawTextPositions(@overlay.bitmap,textPos)
   end
@@ -368,7 +368,7 @@ class FightMenuDisplay < BattleMenuBase
     if USE_GRAPHICS
       # Choose appropriate button graphics and z positions
       @buttons.each_with_index do |button,i|
-        if !moves[i]
+        if !moves[i] || moves[i].id==0
           @visibility["button_#{i}"] = false
           next
         end
@@ -384,29 +384,28 @@ class FightMenuDisplay < BattleMenuBase
   def refreshMoveData(move)
     # Write PP and type of the selected move
     if !USE_GRAPHICS
-      moveType = GameData::Type.get(move.type).name
-      if move.total_pp<=0
+      moveType = PBTypes.getName(move.type)
+      if move.totalpp<=0
         @msgBox.text = _INTL("PP: ---<br>TYPE/{1}",moveType)
       else
         @msgBox.text = _ISPRINTF("PP: {1: 2d}/{2: 2d}<br>TYPE/{3:s}",
-           move.pp,move.total_pp,moveType)
+           move.pp,move.totalpp,moveType)
       end
       return
     end
     @infoOverlay.bitmap.clear
-    if !move
+    if !move || move.id==0
       @visibility["typeIcon"] = false
       return
     end
     @visibility["typeIcon"] = true
     # Type icon
-    type_number = GameData::Type.get(move.type).id_number
-    @typeIcon.src_rect.y = type_number * TYPE_ICON_HEIGHT
+    @typeIcon.src_rect.y = move.type*TYPE_ICON_HEIGHT
     # PP text
-    if move.total_pp>0
-      ppFraction = [(4.0*move.pp/move.total_pp).ceil,3].min
+    if move.totalpp>0
+      ppFraction = [(4.0*move.pp/move.totalpp).ceil,3].min
       textPos = []
-      textPos.push([_INTL("PP: {1}/{2}",move.pp,move.total_pp),
+      textPos.push([_INTL("PP: {1}/{2}",move.pp,move.totalpp),
          448,50,2,PP_COLORS[ppFraction*2],PP_COLORS[ppFraction*2+1]])
       pbDrawTextPositions(@infoOverlay.bitmap,textPos)
     end

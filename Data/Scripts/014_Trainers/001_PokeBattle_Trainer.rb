@@ -16,58 +16,44 @@ class PokeBattle_Trainer
   attr_accessor :pokegear   # Whether the Pokégear was obtained
   attr_writer   :language
 
-  def trainerTypeName; return GameData::TrainerType.get(@trainertype).name;        end
-  def moneyEarned;     return GameData::TrainerType.get(@trainertype).base_money;  end
-  def gender;          return GameData::TrainerType.get(@trainertype).gender;      end
-  def male?;           return GameData::TrainerType.get(@trainertype).male?;       end
-  def female?;         return GameData::TrainerType.get(@trainertype).female?;     end
-  alias isMale? male?
-  alias isFemale? female?
-  def skill;           return GameData::TrainerType.get(@trainertype).skill_level; end
-  def skillCode;       return GameData::TrainerType.get(@trainertype).skill_code;  end
-
-  def hasSkillCode(code)
-    c = skillCode
-    return c && c != "" && c[/#{code}/]
+  def trainerTypeName   # Name of this trainer type (localized)
+    return PBTrainers.getName(@trainertype) rescue _INTL("PkMn Trainer")
   end
 
   def fullname
-    return _INTL("{1} {2}", trainerTypeName, @name)
+    return _INTL("{1} {2}",self.trainerTypeName,@name)
   end
 
-  #=============================================================================
-  # Unique ID number
-  #=============================================================================
-  def publicID(id = nil)   # Portion of the ID which is visible on the Trainer Card
-    return id ? id & 0xFFFF : @id & 0xFFFF
+  def publicID(id=nil)   # Portion of the ID which is visible on the Trainer Card
+    return id ? id&0xFFFF : @id&0xFFFF
   end
 
-  def secretID(id = nil)   # Other portion of the ID
-    return id ? id >> 16 : @id >> 16
+  def secretID(id=nil)   # Other portion of the ID
+    return id ? id>>16 : @id>>16
   end
 
   def getForeignID   # Random ID other than this Trainer's ID
-    fid = 0
+    fid=0
     loop do
-      fid = rand(2 ** 16) | rand(2 ** 16) << 16
-      break if fid != @id
+      fid=rand(256)
+      fid|=rand(256)<<8
+      fid|=rand(256)<<16
+      fid|=rand(256)<<24
+      break if fid!=@id
     end
     return fid
   end
 
   def setForeignID(other)
-    @id = other.getForeignID
+    @id=other.getForeignID
   end
 
   def metaID
-    @metaID = $PokemonGlobal.playerID if !@metaID
-    @metaID = 0 if !@metaID
+    @metaID=$PokemonGlobal.playerID if !@metaID
+    @metaID=0 if !@metaID
     return @metaID
   end
 
-  #=============================================================================
-  # Other properties
-  #=============================================================================
   def outfit
     return @outfit || 0
   end
@@ -77,7 +63,31 @@ class PokeBattle_Trainer
   end
 
   def money=(value)
-    @money = [[value, MAX_MONEY].min, 0].max
+    @money=[[value,MAX_MONEY].min,0].max
+  end
+
+  def moneyEarned   # Money won when trainer is defeated
+    data = pbGetTrainerTypeData(@trainertype)
+    return data[3] if data && data[3]
+    return 30
+  end
+
+  def skill   # Skill level (for AI)
+    data = pbGetTrainerTypeData(@trainertype)
+    return data[8] if data && data[8]
+    return 30
+  end
+
+  def skillCode
+    data = pbGetTrainerTypeData(@trainertype)
+    return data[9] if data && data[9]
+    return ""
+  end
+
+  def hasSkillCode(code)
+    c = skillCode
+    return true if c && c!="" && c[/#{code}/]
+    return false
   end
 
   def numbadges   # Number of badges
@@ -86,9 +96,18 @@ class PokeBattle_Trainer
     return ret
   end
 
-  #=============================================================================
-  # Party
-  #=============================================================================
+  def gender
+    data = pbGetTrainerTypeData(@trainertype)
+    return data[7] if data && data[7]
+    return 2   # Gender unknown
+  end
+
+  def male?; return self.gender==0; end
+  alias isMale? male?
+
+  def female?; return self.gender==1; end
+  alias isFemale? female?
+
   def pokemonParty
     return @party.find_all { |p| p && !p.egg? }
   end
@@ -114,122 +133,132 @@ class PokeBattle_Trainer
   end
 
   def firstParty
-    return nil if @party.length == 0
+    return nil if @party.length==0
     return @party[0]
   end
 
   def firstPokemon
-    p = self.pokemonParty
-    return nil if p.length == 0
+    p=self.pokemonParty
+    return nil if p.length==0
     return p[0]
   end
 
   def firstAblePokemon
-    p = self.ablePokemonParty
-    return nil if p.length == 0
+    p=self.ablePokemonParty
+    return nil if p.length==0
     return p[0]
   end
 
   def lastParty
-    return nil if @party.length == 0
-    return @party[@party.length - 1]
+    return nil if @party.length==0
+    return @party[@party.length-1]
   end
 
   def lastPokemon
-    p = self.pokemonParty
-    return nil if p.length == 0
-    return p[p.length - 1]
+    p=self.pokemonParty
+    return nil if p.length==0
+    return p[p.length-1]
   end
 
   def lastAblePokemon
-    p = self.ablePokemonParty
-    return nil if p.length == 0
-    return p[p.length - 1]
+    p=self.ablePokemonParty
+    return nil if p.length==0
+    return p[p.length-1]
   end
 
-  def party_full?
-    return @party.length >= MAX_PARTY_SIZE
-  end
-
-  #=============================================================================
-  # Pokédex
-  #=============================================================================
-  def pokedexSeen(region = -1)   # Number of Pokémon seen
-    ret = 0
-    if region == -1
-      GameData::Species.each { |s| ret += 1 if s.form == 0 && @seen[s.species] }
+  def pokedexSeen(region=-1)   # Number of Pokémon seen
+    ret=0
+    if region==-1
+      for i in 1..PBSpecies.maxValue
+        ret+=1 if @seen[i]
+      end
     else
-      pbAllRegionalSpecies(region).each { |s| ret += 1 if s && @seen[s] }
+      regionlist=pbAllRegionalSpecies(region)
+      for i in regionlist
+        ret+=1 if i > 0 && @seen[i]
+      end
     end
     return ret
   end
 
-  def pokedexOwned(region = -1)   # Number of Pokémon owned
-    ret = 0
-    if region == -1
-      GameData::Species.each { |s| ret += 1 if s.form == 0 && @owned[s.species] }
+  def pokedexOwned(region=-1)   # Number of Pokémon owned
+    ret=0
+    if region==-1
+      for i in 0..PBSpecies.maxValue
+        ret+=1 if @owned[i]
+      end
     else
-      pbAllRegionalSpecies(region).each { |s| ret += 1 if s && @owned[s] }
+      regionlist=pbAllRegionalSpecies(region)
+      for i in regionlist
+        ret+=1 if @owned[i]
+      end
     end
     return ret
   end
 
   def numFormsSeen(species)
-    species_data = GameData::Species.try_get(species)
-    return 0 if !species_data
-    species = species_data.species
-    ret = 0
-    @formseen[species] = [[], []] if !@formseen[species]
-    array = @formseen[species]
-    for i in 0...[array[0].length, array[1].length].max
-      ret += 1 if array[0][i] || array[1][i]
+    species=getID(PBSpecies,species)
+    return 0 if species<=0
+    ret=0
+    array=@formseen[species]
+    for i in 0...[array[0].length,array[1].length].max
+      ret+=1 if array[0][i] || array[1][i]
     end
     return ret
   end
 
   def seen?(species)
-    species_data = GameData::Species.try_get(species)
-    return (species_data) ? @seen[species_data.species] : false
+    species=getID(PBSpecies,species)
+    return species>0 ? @seen[species] : false
   end
   alias hasSeen? seen?
 
   def owned?(species)
-    species_data = GameData::Species.try_get(species)
-    return (species_data) ? @owned[species_data.species] : false
+    species=getID(PBSpecies,species)
+    return species>0 ? @owned[species] : false
   end
   alias hasOwned? owned?
 
   def setSeen(species)
-    species_data = GameData::Species.try_get(species)
-    @seen[species_data.species] = true if species_data
+    species=getID(PBSpecies,species)
+    @seen[species]=true if species>0
   end
 
   def setOwned(species)
-    species_data = GameData::Species.try_get(species)
-    @owned[species_data.species] = true if species_data
+    species=getID(PBSpecies,species)
+    @owned[species]=true if species>0
   end
 
   def clearPokedex
-    @seen         = {}
-    @owned        = {}
-    @formseen     = {}
-    @formlastseen = {}
+    @seen         = []
+    @owned        = []
+    @formseen     = []
+    @formlastseen = []
+    for i in 1..PBSpecies.maxValue
+      @seen[i]         = false
+      @owned[i]        = false
+      @formlastseen[i] = []
+      @formseen[i]     = [[],[]]
+    end
   end
 
-  #=============================================================================
-  # Initializing
-  #=============================================================================
-  def initialize(name, trainertype)
+  def initialize(name,trainertype)
     @name              = name
     @language          = pbGetLanguage
     @trainertype       = trainertype
-    @id                = rand(2 ** 16) | rand(2 ** 16) << 16
+    @id                = rand(256)
+    @id                |= rand(256)<<8
+    @id                |= rand(256)<<16
+    @id                |= rand(256)<<24
     @metaID            = 0
     @outfit            = 0
     @pokegear          = false
     @pokedex           = false
     clearPokedex
-    @shadowcaught      = {}
+    @shadowcaught      = []
+    for i in 1..PBSpecies.maxValue
+      @shadowcaught[i] = false
+    end
     @badges            = []
     for i in 0...8
       @badges[i]       = false

@@ -335,31 +335,22 @@ class Maze
     end
   end
 
-  def recurseDepthFirst(x, y, depth)
+  def recurseDepthFirst(x,y,depth)
     setVisited(x,y)
-    dirs = @@dirs.shuffle!
+    dirs=@@dirs.shuffle!
     for c in 0...4
-      d = dirs[c]
-      cx = 0
-      cy = 0
+      d=dirs[c]
+      cx=0;cy=0
       case d
-      when EdgeMasks::North
-        cx = x
-        cy = y - 1
-      when EdgeMasks::South
-        cx = x
-        cy = y + 1
-      when EdgeMasks::East
-        cx = x + 1
-        cy = y
-      when EdgeMasks::West
-        cx = x - 1
-        cy = y
+      when EdgeMasks::North; cx=x; cy=y-1
+      when EdgeMasks::South; cx=x; cy=y+1
+      when EdgeMasks::East; cx=x+1; cy=y
+      when EdgeMasks::West; cx=x-1; cy=y
       end
-      if cx >= 0 && cy >= 0 && cx < cellWidth && cy < cellHeight
-        if !getVisited(cx, cy)
-          clearEdgeNode(x, y, d)
-          recurseDepthFirst(cx, cy, depth + 1)
+      if cx>=0 && cy>=0 && cx<cellWidth && cy<cellHeight
+        if !getVisited(cx,cy)
+          clearEdgeNode(x,y,d)
+          recurseDepthFirst(cx,cy,depth+1)
         end
       end
     end
@@ -562,27 +553,27 @@ def pbRandomRoomTile(dungeon,tiles)
 end
 
 Events.onMapCreate += proc { |_sender, e|
-  mapID = e[0]
-  map = e[1]
-  next if !GameData::MapMetadata.exists?(mapID) ||
-          !GameData::MapMetadata.get(mapID).random_dungeon
-  # this map is a randomly generated dungeon
-  dungeon=Dungeon.new(map.width,map.height)
-  dungeon.generate
-  dungeon.generateMapInPlace(map)
-  roomtiles=[]
-  # Reposition events
-  for event in map.events.values
+  mapID=e[0]
+  map=e[1]
+  if pbGetMetadata(mapID,MetadataDungeon)
+    # this map is a randomly generated dungeon
+    dungeon=Dungeon.new(map.width,map.height)
+    dungeon.generate
+    dungeon.generateMapInPlace(map)
+    roomtiles=[]
+    # Reposition events
+    for event in map.events.values
+      tile=pbRandomRoomTile(dungeon,roomtiles)
+      if tile
+        event.x=tile[0]
+        event.y=tile[1]
+      end
+    end
+    # Override transfer X and Y
     tile=pbRandomRoomTile(dungeon,roomtiles)
     if tile
-      event.x=tile[0]
-      event.y=tile[1]
+      $game_temp.player_new_x=tile[0]
+      $game_temp.player_new_y=tile[1]
     end
-  end
-  # Override transfer X and Y
-  tile=pbRandomRoomTile(dungeon,roomtiles)
-  if tile
-    $game_temp.player_new_x=tile[0]
-    $game_temp.player_new_y=tile[1]
   end
 }

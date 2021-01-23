@@ -34,7 +34,7 @@ class PokeBattle_Confusion < PokeBattle_Move
     @priority   = 0
     @flags      = ""
     @addlEffect = 0
-    @calcType   = nil
+    @calcType   = -1
     @powerBoost = false
     @snatched   = false
   end
@@ -54,8 +54,8 @@ class PokeBattle_Struggle < PokeBattle_Move
   def initialize(battle,move)
     @battle     = battle
     @realMove   = nil                     # Not associated with a move
-    @id         = (move) ? move.id : :STRUGGLE
-    @name       = (move) ? move.name : _INTL("Struggle")
+    @id         = (move) ? move.id : -1   # Doesn't work if 0
+    @name       = (move) ? PBMoves.getName(@id) : _INTL("Struggle")
     @function   = "002"
     @baseDamage = 50
     @type       = -1
@@ -66,7 +66,7 @@ class PokeBattle_Struggle < PokeBattle_Move
     @priority   = 0
     @flags      = ""
     @addlEffect = 0
-    @calcType   = nil
+    @calcType   = -1
     @powerBoost = false
     @snatched   = false
   end
@@ -410,14 +410,14 @@ class PokeBattle_TwoTurnMove < PokeBattle_Move
   def chargingTurnMove?; return true; end
 
   # user.effects[PBEffects::TwoTurnAttack] is set to the move's ID if this
-  # method returns true, or nil if false.
-  # Non-nil means the charging turn. nil means the attacking turn.
+  # method returns true, or 0 if false.
+  # Non-zero means the charging turn. 0 means the attacking turn.
   def pbIsChargingTurn?(user)
     @powerHerb = false
     @chargingTurn = false   # Assume damaging turn by default
     @damagingTurn = true
     # 0 at start of charging turn, move's ID at start of damaging turn
-    if !user.effects[PBEffects::TwoTurnAttack]
+    if user.effects[PBEffects::TwoTurnAttack]==0
       @powerHerb = user.hasActiveItem?(:POWERHERB)
       @chargingTurn = true
       @damagingTurn = @powerHerb
@@ -555,7 +555,7 @@ class PokeBattle_ProtectMove < PokeBattle_Move
       @battle.pbDisplay(_INTL("But it failed!"))
       return true
     end
-    if (!@sidedEffect || MECHANICS_GENERATION <= 5) &&
+    if !(@sidedEffect && NEWEST_BATTLE_MECHANICS) &&
        user.effects[PBEffects::ProtectRate]>1 &&
        @battle.pbRandom(user.effects[PBEffects::ProtectRate])!=0
       user.effects[PBEffects::ProtectRate] = 1
@@ -575,7 +575,7 @@ class PokeBattle_ProtectMove < PokeBattle_Move
     else
       user.effects[@effect] = true
     end
-    user.effects[PBEffects::ProtectRate] *= (MECHANICS_GENERATION >= 6) ? 3 : 2
+    user.effects[PBEffects::ProtectRate] *= (NEWEST_BATTLE_MECHANICS) ? 3 : 2
     pbProtectMessage(user)
   end
 
@@ -636,7 +636,6 @@ class PokeBattle_PledgeMove < PokeBattle_Move
       @battle.pbDisplay(_INTL("The two moves have become one! It's a combined move!"))
       @pledgeCombo = true
       @comboEffect = i[1]; @overrideType = i[2]; @overrideAnim = i[3]
-      @overrideType = nil if !GameData::Type.exists?(@overrideType)
       break
     end
     return if @pledgeCombo
@@ -644,7 +643,7 @@ class PokeBattle_PledgeMove < PokeBattle_Move
     user.eachAlly do |b|
       next if @battle.choices[b.index][0]!=:UseMove || b.movedThisRound?
       move = @battle.choices[b.index][2]
-      next if !move
+      next if !move || move.id<=0
       @combos.each do |i|
         next if i[0]!=move.function
         @pledgeSetup = true
@@ -709,7 +708,7 @@ class PokeBattle_PledgeMove < PokeBattle_Move
 
   def pbShowAnimation(id,user,targets,hitNum=0,showAnimation=true)
     return if @pledgeSetup   # No animation for setting up
-    id = @overrideAnim if @overrideAnim
+    id = @overrideAnim if @overrideAnim!=nil
     return super
   end
 end

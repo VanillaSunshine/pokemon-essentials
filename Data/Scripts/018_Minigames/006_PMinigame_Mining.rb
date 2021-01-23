@@ -498,7 +498,7 @@ class MiningGameScene
     revealeditems.dispose
     for index in revealed
       @items[index][3]=true
-      item=ITEMS[@items[index][0]][0]
+      item=getConst(PBItems,ITEMS[@items[index][0]][0])
       @itemswon.push(item)
     end
   end
@@ -581,10 +581,10 @@ class MiningGameScene
       for i in @itemswon
         if $PokemonBag.pbStoreItem(i)
           pbMessage(_INTL("One {1} was obtained.\\se[Mining item get]\\wtnp[30]",
-             GameData::Item.get(i).name))
+             PBItems.getName(i)))
         else
           pbMessage(_INTL("One {1} was found, but you have no room for it.",
-             GameData::Item.get(i).name))
+             PBItems.getName(i)))
         end
       end
     end

@@ -2,54 +2,63 @@
 # Mega Evolution
 # NOTE: These are treated as form changes in Essentials.
 #===============================================================================
-class Pokemon
-  def getMegaForm(checkItemOnly = false)
+class PokeBattle_Pokemon
+  def getMegaForm(checkItemOnly=false)
+    formData = pbLoadFormToSpecies
+    return 0 if !formData[@species] || formData[@species].length==0
     ret = 0
-    GameData::Species.each do |data|
-      next if data.species != @species
-      if data.mega_stone && hasItem?(data.mega_stone)
-        ret = data.form
-        break
-      elsif !checkItemOnly && data.mega_move && hasMove?(data.mega_move)
-        ret = data.form
-        break
+    speciesData = pbLoadSpeciesData
+    for i in 0...formData[@species].length
+      fSpec = formData[@species][i]
+      next if !fSpec || fSpec<=0
+      megaStone = speciesData[fSpec][SpeciesMegaStone] || 0
+      if megaStone>0 && self.hasItem?(megaStone)
+        ret = i; break
+      end
+      if !checkItemOnly
+        megaMove = speciesData[fSpec][SpeciesMegaMove] || 0
+        if megaMove>0 && self.hasMove?(megaMove)
+          ret = i; break
+        end
       end
     end
     return ret   # form number, or 0 if no accessible Mega form
   end
 
   def getUnmegaForm
-    return (mega?) ? species_data.unmega_form : -1
+    return -1 if !mega?
+    unmegaForm = pbGetSpeciesData(@species,formSimple,SpeciesUnmegaForm)
+    return unmegaForm   # form number
   end
 
   def hasMegaForm?
     megaForm = self.getMegaForm
-    return megaForm > 0 && megaForm != self.formSimple
+    return megaForm>0 && megaForm!=self.formSimple
   end
 
   def mega?
     megaForm = self.getMegaForm
-    return megaForm > 0 && megaForm == self.formSimple
+    return megaForm>0 && megaForm==self.formSimple
   end
   alias isMega? mega?
 
   def makeMega
     megaForm = self.getMegaForm
-    self.form = megaForm if megaForm > 0
+    self.form = megaForm if megaForm>0
   end
 
   def makeUnmega
     unmegaForm = self.getUnmegaForm
-    self.form = unmegaForm if unmegaForm >= 0
+    self.form = unmegaForm if unmegaForm>=0
   end
 
   def megaName
-    formName = species_data.form_name
-    return (formName && !formName.empty?) ? formName : _INTL("Mega {1}", species_data.name)
+    formName = pbGetMessage(MessageTypes::FormNames,self.fSpecies)
+    return (formName && formName!="") ? formName : _INTL("Mega {1}",PBSpecies.getName(@species))
   end
 
   def megaMessage   # 0=default message, 1=Rayquaza message
-    return species_data.mega_message
+    return pbGetSpeciesData(@species,getMegaForm,SpeciesMegaMessage)
   end
 end
 
@@ -59,7 +68,7 @@ end
 # Primal Reversion
 # NOTE: These are treated as form changes in Essentials.
 #===============================================================================
-class Pokemon
+class PokeBattle_Pokemon
   def hasPrimalForm?
     v = MultipleForms.call("getPrimalForm",self)
     return v!=nil

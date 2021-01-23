@@ -504,8 +504,9 @@ class PBAnimation < Array
       when 0   # Play SE
         if i.name && i.name!=""
           pbSEPlay("Anim/"+i.name,i.volume,i.pitch)
-        elsif user && user.pokemon
-          name = GameData::Species.cry_filename_from_pokemon(user.pokemon)
+        else
+          poke = (user && user.pokemon) ? user.pokemon : 1
+          name = (pbCryFile(poke) rescue nil)
           pbSEPlay(name,i.volume,i.pitch) if name
         end
 #        if sprite

@@ -9,10 +9,10 @@ begin
 
     def self.animationName(terrain)
       case terrain
-      when Electric then return "ElectricTerrain"
-      when Grassy   then return "GrassyTerrain"
-      when Misty    then return "MistyTerrain"
-      when Psychic  then return "PsychicTerrain"
+      when Electric; return "ElectricTerrain"
+      when Grassy;   return "GrassyTerrain"
+      when Misty;    return "MistyTerrain"
+      when Psychic;  return "PsychicTerrain"
       end
       return nil
     end

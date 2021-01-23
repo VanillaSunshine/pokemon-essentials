@@ -20,9 +20,9 @@ class PokeBattle_Battler
     @form           = 0
     @level          = 0
     @hp = @totalhp  = 0
-    @type1 = @type2 = nil
-    @ability_id     = nil
-    @item_id        = nil
+    @type1 = @type2 = 0
+    @ability        = 0
+    @item           = 0
     @gender         = 0
     @attack = @defense = @spatk = @spdef = @speed = 0
     @status         = PBStatuses::NONE
@@ -78,8 +78,8 @@ class PokeBattle_Battler
     @totalhp      = pkmn.totalhp
     @type1        = pkmn.type1
     @type2        = pkmn.type2
-    @ability_id   = pkmn.ability_id
-    @item_id      = pkmn.item_id
+    @ability      = pkmn.ability
+    @item         = pkmn.item
     @gender       = pkmn.gender
     @attack       = pkmn.attack
     @defense      = pkmn.defense
@@ -93,7 +93,7 @@ class PokeBattle_Battler
     @participants = []   # Participants earn Exp. if this battler is defeated
     @moves        = []
     pkmn.moves.each_with_index do |m,i|
-      @moves[i] = PokeBattle_Move.from_pokemon_move(@battle,m)
+      @moves[i] = PokeBattle_Move.pbFromPBMove(@battle,m)
     end
     @iv           = pkmn.iv.clone
   end
@@ -147,9 +147,9 @@ class PokeBattle_Battler
     @lastHPLostFromFoe     = 0
     @tookDamage            = false
     @tookPhysicalHit       = false
-    @lastMoveUsed          = nil
-    @lastMoveUsedType      = nil
-    @lastRegularMoveUsed   = nil
+    @lastMoveUsed          = -1
+    @lastMoveUsedType      = -1
+    @lastRegularMoveUsed   = -1
     @lastRegularMoveTarget = -1
     @lastRoundMoved        = -1
     @lastMoveFailed        = false
@@ -167,7 +167,7 @@ class PokeBattle_Battler
     @effects[PBEffects::BideTarget]          = -1
     @effects[PBEffects::BurnUp]              = false
     @effects[PBEffects::Charge]              = 0
-    @effects[PBEffects::ChoiceBand]          = nil
+    @effects[PBEffects::ChoiceBand]          = -1
     @effects[PBEffects::Counter]             = -1
     @effects[PBEffects::CounterTarget]       = -1
     @effects[PBEffects::Dancer]              = false
@@ -176,10 +176,10 @@ class PokeBattle_Battler
     @effects[PBEffects::DestinyBondPrevious] = false
     @effects[PBEffects::DestinyBondTarget]   = -1
     @effects[PBEffects::Disable]             = 0
-    @effects[PBEffects::DisableMove]         = nil
+    @effects[PBEffects::DisableMove]         = 0
     @effects[PBEffects::Electrify]           = false
     @effects[PBEffects::Encore]              = 0
-    @effects[PBEffects::EncoreMove]          = nil
+    @effects[PBEffects::EncoreMove]          = 0
     @effects[PBEffects::Endure]              = false
     @effects[PBEffects::FirstPledge]         = 0
     @effects[PBEffects::FlashFire]           = false
@@ -188,7 +188,7 @@ class PokeBattle_Battler
     @effects[PBEffects::FollowMe]            = 0
     @effects[PBEffects::Foresight]           = false
     @effects[PBEffects::FuryCutter]          = 0
-    @effects[PBEffects::GemConsumed]         = nil
+    @effects[PBEffects::GemConsumed]         = 0
     @effects[PBEffects::Grudge]              = false
     @effects[PBEffects::HelpingHand]         = false
     @effects[PBEffects::HyperBeam]           = 0
@@ -227,7 +227,7 @@ class PokeBattle_Battler
     @effects[PBEffects::Nightmare]           = false
     @effects[PBEffects::Outrage]             = 0
     @effects[PBEffects::ParentalBond]        = 0
-    @effects[PBEffects::PickupItem]          = nil
+    @effects[PBEffects::PickupItem]          = 0
     @effects[PBEffects::PickupUse]           = 0
     @effects[PBEffects::Pinch]               = false
     @effects[PBEffects::Powder]              = false
@@ -240,6 +240,7 @@ class PokeBattle_Battler
     @effects[PBEffects::Quash]               = 0
     @effects[PBEffects::Rage]                = false
     @effects[PBEffects::RagePowder]          = false
+    @effects[PBEffects::Revenge]             = 0
     @effects[PBEffects::Rollout]             = 0
     @effects[PBEffects::Roost]               = false
     @effects[PBEffects::SkyDrop]             = -1
@@ -261,7 +262,7 @@ class PokeBattle_Battler
     @effects[PBEffects::Transform]           = false
     @effects[PBEffects::TransformSpecies]    = 0
     @effects[PBEffects::Trapping]            = 0
-    @effects[PBEffects::TrappingMove]        = nil
+    @effects[PBEffects::TrappingMove]        = 0
     @effects[PBEffects::TrappingUser]        = -1
     @battle.eachBattler do |b|   # Other battlers no longer trapped by self
       next if b.effects[PBEffects::TrappingUser]!=@index
@@ -269,8 +270,8 @@ class PokeBattle_Battler
       b.effects[PBEffects::TrappingUser] = -1
     end
     @effects[PBEffects::Truant]              = false
-    @effects[PBEffects::TwoTurnAttack]       = nil
-    @effects[PBEffects::Type3]               = nil
+    @effects[PBEffects::TwoTurnAttack]       = 0
+    @effects[PBEffects::Type3]               = -1
     @effects[PBEffects::Unburden]            = false
     @effects[PBEffects::Uproar]              = 0
     @effects[PBEffects::WaterSport]          = false
@@ -284,19 +285,19 @@ class PokeBattle_Battler
   def pbUpdate(fullChange=false)
     return if !@pokemon
     @pokemon.calcStats
-    @level          = @pokemon.level
-    @hp             = @pokemon.hp
-    @totalhp        = @pokemon.totalhp
+    @level       = @pokemon.level
+    @hp          = @pokemon.hp
+    @totalhp     = @pokemon.totalhp
     if !@effects[PBEffects::Transform]
-      @attack       = @pokemon.attack
-      @defense      = @pokemon.defense
-      @spatk        = @pokemon.spatk
-      @spdef        = @pokemon.spdef
-      @speed        = @pokemon.speed
+      @attack    = @pokemon.attack
+      @defense   = @pokemon.defense
+      @spatk     = @pokemon.spatk
+      @spdef     = @pokemon.spdef
+      @speed     = @pokemon.speed
       if fullChange
-        @type1      = @pokemon.type1
-        @type2      = @pokemon.type2
-        @ability_id = @pokemon.ability_id
+        @type1   = @pokemon.type1
+        @type2   = @pokemon.type2
+        @ability = @pokemon.ability
       end
     end
   end

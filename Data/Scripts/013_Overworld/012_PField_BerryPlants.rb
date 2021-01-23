@@ -1,3 +1,33 @@
+class PokemonTemp
+  attr_accessor :berryPlantData
+end
+
+
+
+def pbLoadBerryPlantData
+  $PokemonTemp = PokemonTemp.new if !$PokemonTemp
+  if !$PokemonTemp.berryPlantData
+    if pbRgssExists?("Data/berry_plants.dat")
+      $PokemonTemp.berryPlantData = load_data("Data/berry_plants.dat")
+    else
+      $PokemonTemp.berryPlantData = []
+    end
+  end
+  return $PokemonTemp.berryPlantData
+end
+
+def pbGetBerryPlantData(item)
+  data = pbLoadBerryPlantData
+  return data[item] if data[item]
+  return [3,15,2,5]   # Hours/stage, drying/hour, min yield, max yield
+end
+
+alias __berryPlant__pbClearData pbClearData
+def pbClearData
+  $PokemonTemp.berryPlantData = nil if $PokemonTemp
+  __berryPlant__pbClearData
+end
+
 Events.onSpritesetCreate += proc { |_sender,e|
   spriteset = e[0]
   viewport  = e[1]
@@ -37,17 +67,17 @@ class BerryPlantMoistureSprite
 
   def updateGraphic
     case @oldmoisture
-    when -1 then @light.setBitmap("")
-    when 0  then @light.setBitmap("Graphics/Characters/berrytreeDry")
-    when 1  then @light.setBitmap("Graphics/Characters/berrytreeDamp")
-    when 2  then @light.setBitmap("Graphics/Characters/berrytreeWet")
+    when -1; @light.setBitmap("")
+    when 0; @light.setBitmap("Graphics/Characters/berrytreeDry")
+    when 1; @light.setBitmap("Graphics/Characters/berrytreeDamp")
+    when 2; @light.setBitmap("Graphics/Characters/berrytreeWet")
     end
   end
 
   def update
     return if !@light || !@event
     newmoisture=-1
-    if @event.variable && @event.variable.length>6 && @event.variable[1]
+    if @event.variable && @event.variable.length>6 && @event.variable[1]>0
       # Berry was planted, show moisture patch
       newmoisture=(@event.variable[4]>50) ? 2 : (@event.variable[4]>0) ? 1 : 0
     end
@@ -73,6 +103,8 @@ end
 
 
 class BerryPlantSprite
+  REPLANTS = 9
+
   def initialize(event,map,_viewport)
     @event=event
     @map=map
@@ -108,8 +140,8 @@ class BerryPlantSprite
 
   def updatePlantDetails(berryData)
     return berryData if berryData[0]==0
-    berryvalues = GameData::BerryPlant.get(berryData[1])
-    timeperstage = berryvalues.hours_per_stage * 3600
+    berryvalues=pbGetBerryPlantData(berryData[1])
+    timeperstage=berryvalues[0]*3600
     timenow=pbGetTimeNow
     if berryData.length>6
       # Gen 4 growth mechanisms
@@ -118,20 +150,19 @@ class BerryPlantSprite
       return berryData if timeDiff<=0
       berryData[3]=timenow.to_i   # last updated now
       # Mulch modifiers
-      dryingrate = berryvalues.drying_per_hour
-      maxreplants = GameData::BerryPlant::NUMBER_OF_REPLANTS
-      ripestages = 4
-      case berryData[7]
-      when :GROWTHMULCH
-        timeperstage = (timeperstage * 0.75).to_i
-        dryingrate = (dryingrate * 1.5).ceil
-      when :DAMPMULCH
-        timeperstage = (timeperstage * 1.25).to_i
-        dryingrate = (dryingrate * 0.5).floor
-      when :GOOEYMULCH
-        maxreplants = (maxreplants * 1.5).ceil
-      when :STABLEMULCH
-        ripestages = 6
+      dryingrate=berryvalues[1]
+      maxreplants=REPLANTS
+      ripestages=4
+      if isConst?(berryData[7],PBItems,:GROWTHMULCH)
+        timeperstage=(timeperstage*0.75).to_i
+        dryingrate=(dryingrate*1.5).ceil
+      elsif isConst?(berryData[7],PBItems,:DAMPMULCH)
+        timeperstage=(timeperstage*1.25).to_i
+        dryingrate=(dryingrate*0.5).floor
+      elsif isConst?(berryData[7],PBItems,:GOOEYMULCH)
+        maxreplants=(maxreplants*1.5).ceil
+      elsif isConst?(berryData[7],PBItems,:STABLEMULCH)
+        ripestages=6
       end
       # Cycle through all replants since last check
       loop do
@@ -214,8 +245,8 @@ class BerryPlantSprite
             berryData[3]+=timeperstage*4        # add to time existed
             berryData[4]=0                      # reset total waterings count
             berryData[5]+=1                     # add to replanted count
-            if berryData[5] > GameData::BerryPlant::NUMBER_OF_REPLANTS   # Too many replants
-              berryData = [0,0,false,0,0,0]
+            if berryData[5]>REPLANTS   # Too many replants
+              berryData=[0,0,false,0,0,0]
               break
             end
           else
@@ -250,17 +281,15 @@ class BerryPlantSprite
       @event.character_name="berrytreeplanted"   # Common to all berries
       @event.turn_down
     else
-      filename=sprintf("berrytree%s",GameData::Item.get(berryData[1]).id.to_s)
-      if !pbResolveBitmap("Graphics/Characters/"+filename)
-        filename=sprintf("berrytree%03d",GameData::Item.get(berryData[1]).id_number)
-      end
+      filename=sprintf("berrytree%s",getConstantName(PBItems,berryData[1])) rescue nil
+      filename=sprintf("berrytree%03d",berryData[1]) if !pbResolveBitmap("Graphics/Characters/"+filename)
       if pbResolveBitmap("Graphics/Characters/"+filename)
         @event.character_name=filename
         case berryData[0]
-        when 2 then @event.turn_down    # X sprouted
-        when 3 then @event.turn_left    # X taller
-        when 4 then @event.turn_right   # X flowering
-        when 5 then @event.turn_up      # X berries
+        when 2; @event.turn_down    # X sprouted
+        when 3; @event.turn_left    # X taller
+        when 4; @event.turn_right   # X flowering
+        when 5; @event.turn_up      # X berries
         end
       else
         @event.character_name="Object ball"
@@ -281,20 +310,25 @@ def pbBerryPlant
   berryData=interp.getVariable
   if !berryData
     if NEW_BERRY_PLANTS
-      berryData=[0,nil,0,0,0,0,0,0]
+      berryData=[0,0,0,0,0,0,0,0]
     else
-      berryData=[0,nil,false,0,0,0]
+      berryData=[0,0,false,0,0,0]
     end
   end
   # Stop the event turning towards the player
   case berryData[0]
-  when 1 then thisEvent.turn_down  # X planted
-  when 2 then thisEvent.turn_down  # X sprouted
-  when 3 then thisEvent.turn_left  # X taller
-  when 4 then thisEvent.turn_right  # X flowering
-  when 5 then thisEvent.turn_up  # X berries
+  when 1; thisEvent.turn_down  # X planted
+  when 2; thisEvent.turn_down  # X sprouted
+  when 3; thisEvent.turn_left  # X taller
+  when 4; thisEvent.turn_right  # X flowering
+  when 5; thisEvent.turn_up  # X berries
   end
-  watering = [:SPRAYDUCK, :SQUIRTBOTTLE, :WAILMERPAIL, :SPRINKLOTAD]
+  watering=[]
+  watering.push(getConst(PBItems,:SPRAYDUCK))
+  watering.push(getConst(PBItems,:SQUIRTBOTTLE))
+  watering.push(getConst(PBItems,:WAILMERPAIL))
+  watering.push(getConst(PBItems,:SPRINKLOTAD))
+  watering.compact!
   berry=berryData[1]
   case berryData[0]
   when 0  # empty
@@ -310,19 +344,19 @@ def pbBerryPlant
           pbFadeOutIn {
             scene = PokemonBag_Scene.new
             screen = PokemonBagScreen.new(scene,$PokemonBag)
-            ret = screen.pbChooseItemScreen(Proc.new { |item| GameData::Item.get(item).is_mulch? })
+            ret = screen.pbChooseItemScreen(Proc.new { |item| pbIsMulch?(item) })
           }
-          if ret
-            if GameData::Item.get(ret).is_mulch?
+          if ret>0
+            if pbIsMulch?(ret)
               berryData[7]=ret
-              pbMessage(_INTL("The {1} was scattered on the soil.\1",GameData::Item.get(ret).name))
+              pbMessage(_INTL("The {1} was scattered on the soil.\1",PBItems.getName(ret)))
               if pbConfirmMessage(_INTL("Want to plant a Berry?"))
                 pbFadeOutIn {
                   scene = PokemonBag_Scene.new
                   screen = PokemonBagScreen.new(scene,$PokemonBag)
-                  berry = screen.pbChooseItemScreen(Proc.new { |item| GameData::Item.get(item).is_berry? })
+                  berry = screen.pbChooseItemScreen(Proc.new { |item| pbIsBerry?(item) })
                 }
-                if berry
+                if berry>0
                   timenow=pbGetTimeNow
                   berryData[0]=1             # growth stage (1-5)
                   berryData[1]=berry         # item ID of planted berry
@@ -333,7 +367,7 @@ def pbBerryPlant
                   berryData[6]=0             # yield penalty
                   $PokemonBag.pbDeleteItem(berry,1)
                   pbMessage(_INTL("The {1} was planted in the soft, earthy soil.",
-                     GameData::Item.get(berry).name))
+                     PBItems.getName(berry)))
                 end
               end
               interp.setVariable(berryData)
@@ -346,9 +380,9 @@ def pbBerryPlant
           pbFadeOutIn {
             scene = PokemonBag_Scene.new
             screen = PokemonBagScreen.new(scene,$PokemonBag)
-            berry = screen.pbChooseItemScreen(Proc.new { |item|  GameData::Item.get(item).is_berry? })
+            berry = screen.pbChooseItemScreen(Proc.new { |item| pbIsBerry?(item) })
           }
-          if berry
+          if berry>0
             timenow=pbGetTimeNow
             berryData[0]=1             # growth stage (1-5)
             berryData[1]=berry         # item ID of planted berry
@@ -359,20 +393,20 @@ def pbBerryPlant
             berryData[6]=0             # yield penalty
             $PokemonBag.pbDeleteItem(berry,1)
             pbMessage(_INTL("The {1} was planted in the soft, earthy soil.",
-               GameData::Item.get(berry).name))
+               PBItems.getName(berry)))
             interp.setVariable(berryData)
           end
           return
         end
       else
-        pbMessage(_INTL("{1} has been laid down.\1",GameData::Item.get(berryData[7]).name))
+        pbMessage(_INTL("{1} has been laid down.\1",PBItems.getName(berryData[7])))
         if pbConfirmMessage(_INTL("Want to plant a Berry?"))
           pbFadeOutIn {
             scene = PokemonBag_Scene.new
             screen = PokemonBagScreen.new(scene,$PokemonBag)
-            berry = screen.pbChooseItemScreen(Proc.new { |item|  GameData::Item.get(item).is_berry? })
+            berry = screen.pbChooseItemScreen(Proc.new { |item| pbIsBerry?(item) })
           }
-          if berry
+          if berry>0
             timenow=pbGetTimeNow
             berryData[0]=1             # growth stage (1-5)
             berryData[1]=berry         # item ID of planted berry
@@ -383,7 +417,7 @@ def pbBerryPlant
             berryData[6]=0             # yield penalty
             $PokemonBag.pbDeleteItem(berry,1)
             pbMessage(_INTL("The {1} was planted in the soft, earthy soil.",
-               GameData::Item.get(berry).name))
+               PBItems.getName(berry)))
             interp.setVariable(berryData)
           end
           return
@@ -395,9 +429,9 @@ def pbBerryPlant
         pbFadeOutIn {
           scene = PokemonBag_Scene.new
           screen = PokemonBagScreen.new(scene,$PokemonBag)
-          berry = screen.pbChooseItemScreen(Proc.new { |item| GameData::Item.get(item).is_berry? })
+          berry = screen.pbChooseItemScreen(Proc.new { |item| pbIsBerry?(item) })
         }
-        if berry
+        if berry>0
           timenow=pbGetTimeNow
           berryData[0]=1             # growth stage (1-5)
           berryData[1]=berry         # item ID of planted berry
@@ -408,55 +442,52 @@ def pbBerryPlant
           berryData[6]=nil; berryData[7]=nil; berryData.compact! # for compatibility
           $PokemonBag.pbDeleteItem(berry,1)
           pbMessage(_INTL("{1} planted a {2} in the soft loamy soil.",
-             $Trainer.name,GameData::Item.get(berry).name))
+             $Trainer.name,PBItems.getName(berry)))
           interp.setVariable(berryData)
         end
         return
       end
     end
   when 1 # X planted
-    pbMessage(_INTL("A {1} was planted here.",GameData::Item.get(berry).name))
+    pbMessage(_INTL("A {1} was planted here.",PBItems.getName(berry)))
   when 2  # X sprouted
-    pbMessage(_INTL("The {1} has sprouted.",GameData::Item.get(berry).name))
+    pbMessage(_INTL("The {1} has sprouted.",PBItems.getName(berry)))
   when 3  # X taller
-    pbMessage(_INTL("The {1} plant is growing bigger.",GameData::Item.get(berry).name))
+    pbMessage(_INTL("The {1} plant is growing bigger.",PBItems.getName(berry)))
   when 4  # X flowering
     if NEW_BERRY_PLANTS
-      pbMessage(_INTL("This {1} plant is in bloom!",GameData::Item.get(berry).name))
+      pbMessage(_INTL("This {1} plant is in bloom!",PBItems.getName(berry)))
     else
       case berryData[4]
       when 4
-        pbMessage(_INTL("This {1} plant is in fabulous bloom!",GameData::Item.get(berry).name))
+        pbMessage(_INTL("This {1} plant is in fabulous bloom!",PBItems.getName(berry)))
       when 3
-        pbMessage(_INTL("This {1} plant is blooming very beautifully!",GameData::Item.get(berry).name))
+        pbMessage(_INTL("This {1} plant is blooming very beautifully!",PBItems.getName(berry)))
       when 2
-        pbMessage(_INTL("This {1} plant is blooming prettily!",GameData::Item.get(berry).name))
+        pbMessage(_INTL("This {1} plant is blooming prettily!",PBItems.getName(berry)))
       when 1
-        pbMessage(_INTL("This {1} plant is blooming cutely!",GameData::Item.get(berry).name))
+        pbMessage(_INTL("This {1} plant is blooming cutely!",PBItems.getName(berry)))
       else
-        pbMessage(_INTL("This {1} plant is in bloom!",GameData::Item.get(berry).name))
+        pbMessage(_INTL("This {1} plant is in bloom!",PBItems.getName(berry)))
       end
     end
   when 5  # X berries
-    berryvalues = GameData::BerryPlant.get(berryData[1])
+    berryvalues=pbGetBerryPlantData(berryData[1])
     # Get berry yield (berrycount)
     berrycount=1
-    if berryData.length > 6
+    if berryData.length>6
       # Gen 4 berry yield calculation
-      berrycount = [berryvalues.maximum_yield - berryData[6], berryvalues.minimum_yield].max
+      berrycount=[berryvalues[3]-berryData[6],berryvalues[2]].max
     else
       # Gen 3 berry yield calculation
-      if berryData[4] > 0
-        berrycount = (berryvalues.maximum_yield - berryvalues.minimum_yield) * (berryData[4] - 1)
-        berrycount += rand(1 + berryvalues.maximum_yield - berryvalues.minimum_yield)
-        berrycount = (berrycount / 4) + berryvalues.minimum_yield
+      if berryData[4]>0
+        randomno=rand(1+berryvalues[3]-berryvalues[2])
+        berrycount=(((berryvalues[3]-berryvalues[2])*(berryData[4]-1)+randomno)/4).floor+berryvalues[2]
       else
-        berrycount = berryvalues.minimum_yield
+        berrycount=berryvalues[2]
       end
     end
-    item = GameData::Item.get(berry)
-    itemname = (berrycount>1) ? item.name_plural : item.name
-    pocket = item.pocket
+    itemname=(berrycount>1) ? PBItems.getNamePlural(berry) : PBItems.getName(berry)
     if berrycount>1
       message=_INTL("There are {1} \\c[1]{2}\\c[0]!\nWant to pick them?",berrycount,itemname)
     else
@@ -473,14 +504,15 @@ def pbBerryPlant
       else
         pbMessage(_INTL("You picked the \\c[1]{1}\\c[0].\\wtnp[30]",itemname))
       end
+      pocket = pbGetPocket(berry)
       pbMessage(_INTL("{1} put the \\c[1]{2}\\c[0] in the <icon=bagPocket{3}>\\c[1]{4}\\c[0] Pocket.\1",
          $Trainer.name,itemname,pocket,PokemonBag.pocketNames()[pocket]))
       if NEW_BERRY_PLANTS
         pbMessage(_INTL("The soil returned to its soft and earthy state."))
-        berryData=[0,nil,0,0,0,0,0,0]
+        berryData=[0,0,0,0,0,0,0,0]
       else
         pbMessage(_INTL("The soil returned to its soft and loamy state."))
-        berryData=[0,nil,false,0,0,0]
+        berryData=[0,0,false,0,0,0]
       end
       interp.setVariable(berryData)
     end
@@ -488,37 +520,38 @@ def pbBerryPlant
   case berryData[0]
   when 1, 2, 3, 4
     for i in watering
-      next if !GameData::Item.exists?(i) || !$PokemonBag.pbHasItem?(i)
-      if pbConfirmMessage(_INTL("Want to sprinkle some water with the {1}?",GameData::Item.get(i).name))
-        if berryData.length>6
-          # Gen 4 berry watering mechanics
-          berryData[4]=100
-        else
-          # Gen 3 berry watering mechanics
-          if berryData[2]==false
-            berryData[4]+=1
-            berryData[2]=true
+      if i!=0 && $PokemonBag.pbHasItem?(i)
+        if pbConfirmMessage(_INTL("Want to sprinkle some water with the {1}?",PBItems.getName(i)))
+          if berryData.length>6
+            # Gen 4 berry watering mechanics
+            berryData[4]=100
+          else
+            # Gen 3 berry watering mechanics
+            if berryData[2]==false
+              berryData[4]+=1
+              berryData[2]=true
+            end
+          end
+          interp.setVariable(berryData)
+          pbMessage(_INTL("{1} watered the plant.\\wtnp[40]",$Trainer.name))
+          if NEW_BERRY_PLANTS
+            pbMessage(_INTL("There! All happy!"))
+          else
+            pbMessage(_INTL("The plant seemed to be delighted."))
           end
         end
-        interp.setVariable(berryData)
-        pbMessage(_INTL("{1} watered the plant.\\wtnp[40]",$Trainer.name))
-        if NEW_BERRY_PLANTS
-          pbMessage(_INTL("There! All happy!"))
-        else
-          pbMessage(_INTL("The plant seemed to be delighted."))
-        end
+        break
       end
-      break
     end
   end
 end
 
-def pbPickBerry(berry, qty = 1)
+def pbPickBerry(berry,qty=1)
   interp=pbMapInterpreter
   thisEvent=interp.get_character(0)
   berryData=interp.getVariable
-  berry=GameData::Item.get(berry)
-  itemname=(qty>1) ? berry.name_plural : berry.name
+  berry=getID(PBItems,berry)
+  itemname=(qty>1) ? PBItems.getNamePlural(berry) : PBItems.getName(berry)
   if qty>1
     message=_INTL("There are {1} \\c[1]{2}\\c[0]!\nWant to pick them?",qty,itemname)
   else
@@ -535,15 +568,15 @@ def pbPickBerry(berry, qty = 1)
     else
       pbMessage(_INTL("You picked the \\c[1]{1}\\c[0].\\wtnp[30]",itemname))
     end
-    pocket = berry.pocket
+    pocket = pbGetPocket(berry)
     pbMessage(_INTL("{1} put the \\c[1]{2}\\c[0] in the <icon=bagPocket{3}>\\c[1]{4}\\c[0] Pocket.\1",
        $Trainer.name,itemname,pocket,PokemonBag.pocketNames()[pocket]))
     if NEW_BERRY_PLANTS
       pbMessage(_INTL("The soil returned to its soft and earthy state."))
-      berryData=[0,nil,0,0,0,0,0,0]
+      berryData=[0,0,0,0,0,0,0,0]
     else
       pbMessage(_INTL("The soil returned to its soft and loamy state."))
-      berryData=[0,nil,false,0,0,0]
+      berryData=[0,0,false,0,0,0]
     end
     interp.setVariable(berryData)
     pbSetSelfSwitch(thisEvent.id,"A",true)

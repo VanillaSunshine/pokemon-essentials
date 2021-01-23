@@ -41,19 +41,19 @@ class PokeBattle_Battler
       return false
     end
     # Choice Band
-    if @effects[PBEffects::ChoiceBand]
+    if @effects[PBEffects::ChoiceBand]>=0
       if hasActiveItem?([:CHOICEBAND,:CHOICESPECS,:CHOICESCARF]) &&
          pbHasMove?(@effects[PBEffects::ChoiceBand])
         if move.id!=@effects[PBEffects::ChoiceBand]
           if showMessages
             msg = _INTL("{1} allows the use of only {2}!",itemName,
-               GameData::Move.get(@effects[PBEffects::ChoiceBand]).name)
+               PBMoves.getName(@effects[PBEffects::ChoiceBand]))
             (commandPhase) ? @battle.pbDisplayPaused(msg) : @battle.pbDisplay(msg)
           end
           return false
         end
       else
-        @effects[PBEffects::ChoiceBand] = nil
+        @effects[PBEffects::ChoiceBand] = -1
       end
     end
     # Taunt
@@ -66,7 +66,7 @@ class PokeBattle_Battler
     end
     # Torment
     if @effects[PBEffects::Torment] && !@effects[PBEffects::Instructed] &&
-       @lastMoveUsed && move.id==@lastMoveUsed && move.id!=@battle.struggle.id
+       move.id==@lastMoveUsed && move.id!=@battle.struggle.id
       if showMessages
         msg = _INTL("{1} can't use the same move twice in a row due to the torment!",pbThis)
         (commandPhase) ? @battle.pbDisplayPaused(msg) : @battle.pbDisplay(msg)
@@ -138,7 +138,7 @@ class PokeBattle_Battler
       otherMoves = []
       eachMoveWithIndex do |_m,i|
         next if i==choice[1]
-        otherMoves.push(i) if @battle.pbCanChooseMove?(@index,i,false)
+        otherMoves[otherMoves.length] = i if @battle.pbCanChooseMove?(@index,i,false)
       end
       return false if otherMoves.length==0   # No other move to use; do nothing
       newChoice = otherMoves[@battle.pbRandom(otherMoves.length)]
@@ -162,10 +162,10 @@ class PokeBattle_Battler
     end
     # Show refusal message and do nothing
     case @battle.pbRandom(4)
-    when 0 then @battle.pbDisplay(_INTL("{1} won't obey!",pbThis))
-    when 1 then @battle.pbDisplay(_INTL("{1} turned away!",pbThis))
-    when 2 then @battle.pbDisplay(_INTL("{1} is loafing around!",pbThis))
-    when 3 then @battle.pbDisplay(_INTL("{1} pretended not to notice!",pbThis))
+    when 0; @battle.pbDisplay(_INTL("{1} won't obey!",pbThis))
+    when 1; @battle.pbDisplay(_INTL("{1} turned away!",pbThis))
+    when 2; @battle.pbDisplay(_INTL("{1} is loafing around!",pbThis))
+    when 3; @battle.pbDisplay(_INTL("{1} pretended not to notice!",pbThis))
     end
     return false
   end
@@ -239,7 +239,7 @@ class PokeBattle_Battler
     if @effects[PBEffects::Flinch]
       @battle.pbDisplay(_INTL("{1} flinched and couldn't move!",pbThis))
       if abilityActive?
-        BattleHandlers.triggerAbilityOnFlinch(self.ability,self,@battle)
+        BattleHandlers.triggerAbilityOnFlinch(@ability,self,@battle)
       end
       @lastMoveFailed = true
       return false
@@ -253,7 +253,7 @@ class PokeBattle_Battler
       else
         @battle.pbCommonAnimation("Confusion",self)
         @battle.pbDisplay(_INTL("{1} is confused!",pbThis))
-        threshold = (MECHANICS_GENERATION >= 7) ? 33 : 50   # % chance
+        threshold = (NEWEST_BATTLE_MECHANICS) ? 33 : 50   # % chance
         if @battle.pbRandom(100)<threshold
           pbConfusionDamage(_INTL("It hurt itself in its confusion!"))
           @lastMoveFailed = true
@@ -291,7 +291,7 @@ class PokeBattle_Battler
     typeMod = move.pbCalcTypeMod(move.calcType,user,target)
     target.damageState.typeMod = typeMod
     # Two-turn attacks can't fail here in the charging turn
-    return true if user.effects[PBEffects::TwoTurnAttack]
+    return true if user.effects[PBEffects::TwoTurnAttack]>0
     # Move-specific failures
     return false if move.pbFailsAgainstTarget?(user,target)
     # Immunity to priority moves because of Psychic Terrain
@@ -313,7 +313,7 @@ class PokeBattle_Battler
     # Wide Guard
     if target.pbOwnSide.effects[PBEffects::WideGuard] && user.index!=target.index &&
        PBTargets.multipleTargets?(move.pbTarget(user)) &&
-       (MECHANICS_GENERATION >= 7 || move.damagingMove?)
+       (NEWEST_BATTLE_MECHANICS || move.damagingMove?)
       @battle.pbCommonAnimation("WideGuard",target)
       @battle.pbDisplay(_INTL("Wide Guard protected {1}!",target.pbThis(true)))
       target.damageState.protected = true
@@ -402,20 +402,20 @@ class PokeBattle_Battler
     # Immunity because of ability (intentionally before type immunity check)
     return false if move.pbImmunityByAbility(user,target)
     # Type immunity
-    if move.pbDamagingMove? && PBTypeEffectiveness.ineffective?(typeMod)
+    if move.pbDamagingMove? && PBTypes.ineffective?(typeMod)
       PBDebug.log("[Target immune] #{target.pbThis}'s type immunity")
       @battle.pbDisplay(_INTL("It doesn't affect {1}...",target.pbThis(true)))
       return false
     end
     # Dark-type immunity to moves made faster by Prankster
-    if MECHANICS_GENERATION >= 7 && user.effects[PBEffects::Prankster] &&
+    if NEWEST_BATTLE_MECHANICS && user.effects[PBEffects::Prankster] &&
        target.pbHasType?(:DARK) && target.opposes?(user)
       PBDebug.log("[Target immune] #{target.pbThis} is Dark-type and immune to Prankster-boosted moves")
       @battle.pbDisplay(_INTL("It doesn't affect {1}...",target.pbThis(true)))
       return false
     end
     # Airborne-based immunity to Ground moves
-    if move.damagingMove? && move.calcType == :GROUND &&
+    if move.damagingMove? && isConst?(move.calcType,PBTypes,:GROUND) &&
        target.airborne? && !move.hitsFlyingTargets?
       if target.hasActiveAbility?(:LEVITATE) && !@battle.moldBreaker
         @battle.pbShowAbilitySplash(target)
@@ -441,28 +441,26 @@ class PokeBattle_Battler
       end
     end
     # Immunity to powder-based moves
-    if move.powderMove?
-      if target.pbHasType?(:GRASS) && MORE_TYPE_EFFECTS
+    if NEWEST_BATTLE_MECHANICS && move.powderMove?
+      if target.pbHasType?(:GRASS)
         PBDebug.log("[Target immune] #{target.pbThis} is Grass-type and immune to powder-based moves")
         @battle.pbDisplay(_INTL("It doesn't affect {1}...",target.pbThis(true)))
         return false
       end
-      if MECHANICS_GENERATION >= 6
-        if target.hasActiveAbility?(:OVERCOAT) && !@battle.moldBreaker
-          @battle.pbShowAbilitySplash(target)
-          if PokeBattle_SceneConstants::USE_ABILITY_SPLASH
-            @battle.pbDisplay(_INTL("It doesn't affect {1}...",target.pbThis(true)))
-          else
-            @battle.pbDisplay(_INTL("It doesn't affect {1} because of its {2}.",target.pbThis(true),target.abilityName))
-          end
-          @battle.pbHideAbilitySplash(target)
-          return false
-        end
-        if target.hasActiveItem?(:SAFETYGOGGLES)
-          PBDebug.log("[Item triggered] #{target.pbThis} has Safety Goggles and is immune to powder-based moves")
+      if target.hasActiveAbility?(:OVERCOAT) && !@battle.moldBreaker
+        @battle.pbShowAbilitySplash(target)
+        if PokeBattle_SceneConstants::USE_ABILITY_SPLASH
           @battle.pbDisplay(_INTL("It doesn't affect {1}...",target.pbThis(true)))
-          return false
+        else
+          @battle.pbDisplay(_INTL("It doesn't affect {1} because of its {2}.",target.pbThis(true),target.abilityName))
         end
+        @battle.pbHideAbilitySplash(target)
+        return false
+      end
+      if target.hasActiveItem?(:SAFETYGOGGLES)
+        PBDebug.log("[Item triggered] #{target.pbThis} has Safety Goggles and is immune to powder-based moves")
+        @battle.pbDisplay(_INTL("It doesn't affect {1}...",target.pbThis(true)))
+        return false
       end
     end
     # Substitute
@@ -481,7 +479,7 @@ class PokeBattle_Battler
   #=============================================================================
   def pbSuccessCheckPerHit(move,user,target,skipAccuracyCheck)
     # Two-turn attacks can't fail here in the charging turn
-    return true if user.effects[PBEffects::TwoTurnAttack]
+    return true if user.effects[PBEffects::TwoTurnAttack]>0
     # Lock-On
     return true if user.effects[PBEffects::LockOn]>0 &&
                    user.effects[PBEffects::LockOnPos]==target.index
@@ -497,7 +495,7 @@ class PokeBattle_Battler
     hitsInvul = true if move.function=="09C"
     if !hitsInvul
       # Semi-invulnerable moves
-      if target.effects[PBEffects::TwoTurnAttack]
+      if target.effects[PBEffects::TwoTurnAttack]>0
         if target.inTwoTurnAttack?("0C9","0CC","0CE")   # Fly, Bounce, Sky Drop
           miss = true if !move.hitsFlyingTargets?
         elsif target.inTwoTurnAttack?("0CA")            # Dig
@@ -531,7 +529,7 @@ class PokeBattle_Battler
     tar = move.pbTarget(user)
     if PBTargets.multipleTargets?(tar)
       @battle.pbDisplay(_INTL("{1} avoided the attack!",target.pbThis))
-    elsif target.effects[PBEffects::TwoTurnAttack]
+    elsif target.effects[PBEffects::TwoTurnAttack]>0
       @battle.pbDisplay(_INTL("{1} avoided the attack!",target.pbThis))
     elsif !move.pbMissMessage(user,target)
       @battle.pbDisplay(_INTL("{1}'s attack missed!",user.pbThis))

@@ -41,13 +41,15 @@ end
 
 def pbPhoneRegisterBattle(message,event,trainertype,trainername,maxbattles)
   return if !$Trainer.pokegear               # Can't register without a Pokégear
-  return false if !GameData::TrainerType.exists?(trainertype)
-  trainertype = GameData::TrainerType.get(trainertype)
+  if trainertype.is_a?(String) || trainertype.is_a?(Symbol)
+    return false if !hasConst?(PBTrainers,trainertype)
+    trainertype = PBTrainers.const_get(trainertype)
+  end
   contact = pbFindPhoneTrainer(trainertype,trainername)
   return if contact && contact[0]              # Existing contact and is visible
   message = _INTL("Let me register you.") if !message
   return if !pbConfirmMessage(message)
-  displayname = _INTL("{1} {2}", GameData::TrainerType.get(trainertype).name,
+  displayname = _INTL("{1} {2}",PBTrainers.getName(trainertype),
      pbGetMessageFromHash(MessageTypes::TrainerNames,trainername))
   if contact                          # Previously registered, just make visible
     contact[0] = true
@@ -64,58 +66,57 @@ end
 def pbRandomPhoneTrainer
   $PokemonGlobal.phoneNumbers = [] if !$PokemonGlobal.phoneNumbers
   temparray = []
-  this_map_metadata = GameData::MapMetadata.try_get($game_map.map_id)
-  return nil if !this_map_metadata || !this_map_metadata.town_map_position
-  currentRegion = this_map_metadata.town_map_position[0]
+  currentRegion = pbGetMetadata($game_map.map_id,MetadataMapPosition)
   for num in $PokemonGlobal.phoneNumbers
-    next if !num[0] || num.length != 8   # if not visible or not a trainer
-    next if $game_map.map_id == num[6]   # Can't call if on same map
-    caller_map_metadata = GameData::MapMetadata.try_get(num[6])
-    next if !caller_map_metadata || !caller_map_metadata.town_map_position
+    next if !num[0] || num.length!=8   # if not visible or not a trainer
+    next if $game_map.map_id==num[6]   # Can't call if on same map
+    callerRegion  = pbGetMetadata(num[6],MetadataMapPosition)
     # Can't call if in different region
-    next if caller_map_metadata.town_map_position[0] != currentRegion
+    next if callerRegion && currentRegion && callerRegion[0]!=currentRegion[0]
     temparray.push(num)
   end
   return nil if temparray.length==0
   return temparray[rand(temparray.length)]
 end
 
-def pbFindPhoneTrainer(tr_type, tr_name)        # Ignores whether visible or not
+def pbFindPhoneTrainer(trtype,trname)           # Ignores whether visible or not
   return nil if !$PokemonGlobal.phoneNumbers
-  tr_type = GameData::TrainerType.get(tr_type).id
+  trtype = getID(PBTrainers,trtype)
+  return nil if !trtype || trtype<=0
   for num in $PokemonGlobal.phoneNumbers
-    return num if num[1] == tr_type && num[2] == tr_name   # If a match
+    return num if num[1]==trtype && num[2]==trname   # If a match
   end
   return nil
 end
 
-def pbHasPhoneTrainer?(tr_type, tr_name)
-  return pbFindPhoneTrainer(tr_type, tr_name) != nil
+def pbHasPhoneTrainer?(trtype,trname)
+  return pbFindPhoneTrainer(trtype,trname)!=nil
 end
 
-def pbPhoneBattleCount(tr_type, tr_name)
-  trainer = pbFindPhoneTrainer(tr_type, tr_name)
-  return (trainer) ? trainer[5] : 0
+def pbPhoneBattleCount(trtype,trname)
+  trainer = pbFindPhoneTrainer(trtype,trname)
+  return trainer[5] if trainer
+  return 0
 end
 
-def pbPhoneReadyToBattle?(tr_type, tr_name)
-  trainer = pbFindPhoneTrainer(tr_type, tr_name)
+def pbPhoneReadyToBattle?(trtype,trname)
+  trainer = pbFindPhoneTrainer(trtype,trname)
   return (trainer && trainer[4]>=2)
 end
 
 #===============================================================================
 # Contact rematch data modifications
 #===============================================================================
-def pbPhoneIncrement(tr_type, tr_name, maxbattles)
-  trainer = pbFindPhoneTrainer(tr_type, tr_name)
+def pbPhoneIncrement(trtype,trname,maxbattles)
+  trainer = pbFindPhoneTrainer(trtype,trname)
   return if !trainer
   trainer[5] += 1 if trainer[5]<maxbattles   # Increment battle count
   trainer[3] = 0   # reset time to can-battle
   trainer[4] = 0   # reset can-battle flag
 end
 
-def pbPhoneReset(tr_type, tr_name)
-  trainer = pbFindPhoneTrainer(tr_type, tr_name)
+def pbPhoneReset(trtype,trname)
+  trainer = pbFindPhoneTrainer(trtype,trname)
   return false if !trainer
   trainer[3] = 0   # reset time to can-battle
   trainer[4] = 0   # reset can-battle flag
@@ -192,11 +193,9 @@ def pbCallTrainer(trtype,trname)
     pbMessage(_INTL("The Trainer is close by.\nTalk to the Trainer in person!"))
     return
   end
-  caller_map_metadata = GameData::MapMetadata.try_get(trainer[6])
-  this_map_metadata = GameData::MapMetadata.try_get($game_map.map_id)
-  if !caller_map_metadata || !caller_map_metadata.town_map_position ||
-     !this_map_metadata || !this_map_metadata.town_map_position ||
-     caller_map_metadata.town_map_position[0] != this_map_metadata.town_map_position[0]
+  callerregion  = pbGetMetadata(trainer[6],MetadataMapPosition)
+  currentregion = pbGetMetadata($game_map.map_id,MetadataMapPosition)
+  if callerregion && currentregion && callerregion[0]!=currentregion[0]
     pbMessage(_INTL("The Trainer is out of range."))
     return   # Can't call if in different region
   end
@@ -264,25 +263,21 @@ def pbEncounterSpecies(phonenum)
   species = pbRandomEncounterSpecies(enctypes[EncounterTypes::LandNight]) if species==0
   species = pbRandomEncounterSpecies(enctypes[EncounterTypes::Water]) if species==0
   return "" if species==0
-  return GameData::Species.get(species).name
+  return PBSpecies.getName(species)
 end
 
 def pbTrainerSpecies(phonenum)
   return "" if !phonenum[0]
-  partyid = [0, phonenum[5] - 1].max
-  trainer_data = GameData::Trainer.try_get(phonenum[1], phonenum[2], partyid)
-  return "" if !trainer_data
-  if trainer_data.pokemon.length == 1
-    pkmn = trainer_data.pokemon[0][:species]
-  else
-    pkmn = trainer_data.pokemon[rand(trainer_data.pokemon.length)][:species]
-  end
-  return GameData::Species.get(pkmn).name
+  partyid = [0,(phonenum[5]-1)].max
+  trainer = pbGetTrainerData(phonenum[1],phonenum[2],partyid)
+  return "" if !trainer || trainer[3].length==0
+  rndpoke = trainer[3][rand(trainer[3].length)]
+  return PBSpecies.getName(rndpoke[0])
 end
 
 def pbTrainerMapName(phonenum)
-  return "" if !phonenum[6] || phonenum[6] == 0
-  return pbGetMessage(MessageTypes::MapNames, phonenum[6])
+  return "" if !phonenum[6] || phonenum[6]==0
+  return pbGetMessage(MessageTypes::MapNames,phonenum[6])
 end
 
 #===============================================================================

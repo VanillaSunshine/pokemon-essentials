@@ -1,6 +1,3 @@
-#===============================================================================
-#
-#===============================================================================
 class PokegearButton < SpriteWrapper
   attr_reader :index
   attr_reader :name
@@ -52,9 +49,8 @@ class PokegearButton < SpriteWrapper
   end
 end
 
-#===============================================================================
-#
-#===============================================================================
+
+
 class PokemonPokegear_Scene
   def pbUpdate
     for i in 0...@commands.length
@@ -115,9 +111,8 @@ class PokemonPokegear_Scene
   end
 end
 
-#===============================================================================
-#
-#===============================================================================
+
+
 class PokemonPokegearScreen
   def initialize(scene)
     @scene = scene

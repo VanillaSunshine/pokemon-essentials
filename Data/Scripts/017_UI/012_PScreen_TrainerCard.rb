@@ -1,6 +1,3 @@
-#===============================================================================
-#
-#===============================================================================
 class PokemonTrainerCard_Scene
   def pbUpdate
     pbUpdateSpriteHash(@sprites)
@@ -26,11 +23,14 @@ class PokemonTrainerCard_Scene
     @sprites["overlay"] = BitmapSprite.new(Graphics.width,Graphics.height,@viewport)
     pbSetSystemFont(@sprites["overlay"].bitmap)
     @sprites["trainer"] = IconSprite.new(336,112,@viewport)
-    @sprites["trainer"].setBitmap(GameData::TrainerType.player_front_sprite_filename($Trainer.trainertype))
+    @sprites["trainer"].setBitmap(pbPlayerSpriteFile($Trainer.trainertype))
     @sprites["trainer"].x -= (@sprites["trainer"].bitmap.width-128)/2
     @sprites["trainer"].y -= (@sprites["trainer"].bitmap.height-128)
     @sprites["trainer"].z = 2
     pbDrawTrainerCardFront
+    if $PokemonGlobal.trainerRecording
+      $PokemonGlobal.trainerRecording.play
+    end
     pbFadeInAndShow(@sprites) { pbUpdate }
   end
 
@@ -95,9 +95,8 @@ class PokemonTrainerCard_Scene
   end
 end
 
-#===============================================================================
-#
-#===============================================================================
+
+
 class PokemonTrainerCardScreen
   def initialize(scene)
     @scene = scene

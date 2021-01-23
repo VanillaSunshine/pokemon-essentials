@@ -94,9 +94,9 @@ class PokeBattle_Battler
 
   def pbReducePP(move)
     return true if usingMultiTurnAttack?
-    return true if move.pp<0          # Don't reduce PP for special calls of moves
-    return true if move.total_pp<=0   # Infinite PP, can always be used
-    return false if move.pp==0        # Ran out of PP, couldn't reduce
+    return true if move.pp<0         # Don't reduce PP for special calls of moves
+    return true if move.totalpp<=0   # Infinite PP, can always be used
+    return false if move.pp==0       # Ran out of PP, couldn't reduce
     pbSetPP(move,move.pp-1) if move.pp>0
     return true
   end
@@ -111,17 +111,17 @@ class PokeBattle_Battler
   def pbChangeTypes(newType)
     if newType.is_a?(PokeBattle_Battler)
       newTypes = newType.pbTypes
-      newTypes.push(:NORMAL) if newTypes.length == 0
+      newTypes.push(getConst(PBTypes,:NORMAL) || 0) if newTypes.length==0
       newType3 = newType.effects[PBEffects::Type3]
-      newType3 = nil if newTypes.include?(newType3)
+      newType3 = -1 if newTypes.include?(newType3)
       @type1 = newTypes[0]
-      @type2 = (newTypes.length == 1) ? newTypes[0] : newTypes[1]
+      @type2 = (newTypes.length==1) ? newTypes[0] : newTypes[1]
       @effects[PBEffects::Type3] = newType3
     else
-      newType = GameData::Item.get(newType).id
+      newType = getConst(PBTypes,newType) if newType.is_a?(Symbol) || newType.is_a?(String)
       @type1 = newType
       @type2 = newType
-      @effects[PBEffects::Type3] = nil
+      @effects[PBEffects::Type3] = -1
     end
     @effects[PBEffects::BurnUp] = false
     @effects[PBEffects::Roost]  = false
@@ -137,7 +137,7 @@ class PokeBattle_Battler
     self.form = newForm
     pbUpdate(true)
     @hp = @totalhp-oldDmg
-    @effects[PBEffects::WeightChange] = 0 if MECHANICS_GENERATION >= 6
+    @effects[PBEffects::WeightChange] = 0 if NEWEST_BATTLE_MECHANICS
     @battle.scene.pbChangePokemon(self,@pokemon)
     @battle.scene.pbRefreshOne(@index)
     @battle.pbDisplay(msg) if msg && msg!=""
@@ -170,9 +170,9 @@ class PokeBattle_Battler
       if hasActiveAbility?(:FORECAST)
         newForm = 0
         case @battle.pbWeather
-        when PBWeather::Sun, PBWeather::HarshSun   then newForm = 1
-        when PBWeather::Rain, PBWeather::HeavyRain then newForm = 2
-        when PBWeather::Hail                       then newForm = 3
+        when PBWeather::Sun, PBWeather::HarshSun;   newForm = 1
+        when PBWeather::Rain, PBWeather::HeavyRain; newForm = 2
+        when PBWeather::Hail;                       newForm = 3
         end
         if @form!=newForm
           @battle.pbShowAbilitySplash(self,true)
@@ -187,7 +187,9 @@ class PokeBattle_Battler
     if isSpecies?(:CHERRIM)
       if hasActiveAbility?(:FLOWERGIFT)
         newForm = 0
-        newForm = 1 if [PBWeather::Sun, PBWeather::HarshSun].include?(@battle.pbWeather)
+        case @battle.pbWeather
+        when PBWeather::Sun, PBWeather::HarshSun; newForm = 1
+        end
         if @form!=newForm
           @battle.pbShowAbilitySplash(self,true)
           @battle.pbHideAbilitySplash(self)
@@ -207,7 +209,7 @@ class PokeBattle_Battler
     # Form changes upon entering battle and when the weather changes
     pbCheckFormOnWeatherChange if !endOfRound
     # Darmanitan - Zen Mode
-    if isSpecies?(:DARMANITAN) && self.ability == :ZENMODE
+    if isSpecies?(:DARMANITAN) && isConst?(@ability,PBAbilities,:ZENMODE)
       if @hp<=@totalhp/2
         if @form!=1
           @battle.pbShowAbilitySplash(self,true)
@@ -221,7 +223,7 @@ class PokeBattle_Battler
       end
     end
     # Minior - Shields Down
-    if isSpecies?(:MINIOR) && self.ability == :SHIELDSDOWN
+    if isSpecies?(:MINIOR) && isConst?(@ability,PBAbilities,:SHIELDSDOWN)
       if @hp>@totalhp/2   # Turn into Meteor form
         newForm = (@form>=7) ? @form-7 : @form
         if @form!=newForm
@@ -238,7 +240,7 @@ class PokeBattle_Battler
       end
     end
     # Wishiwashi - Schooling
-    if isSpecies?(:WISHIWASHI) && self.ability == :SCHOOLING
+    if isSpecies?(:WISHIWASHI) && isConst?(@ability,PBAbilities,:SCHOOLING)
       if @level>=20 && @hp>@totalhp/4
         if @form!=1
           @battle.pbShowAbilitySplash(self,true)
@@ -252,7 +254,8 @@ class PokeBattle_Battler
       end
     end
     # Zygarde - Power Construct
-    if isSpecies?(:ZYGARDE) && self.ability == :POWERCONSTRUCT && endOfRound
+    if isSpecies?(:ZYGARDE) && isConst?(@ability,PBAbilities,:POWERCONSTRUCT) &&
+       endOfRound
       if @hp<=@totalhp/2 && @form<2   # Turn into Complete Forme
         newForm = @form+2
         @battle.pbDisplay(_INTL("You sense the presence of many!"))
@@ -264,29 +267,29 @@ class PokeBattle_Battler
   end
 
   def pbTransform(target)
-    oldAbil = @ability_id
+    oldAbil = @ability
     @effects[PBEffects::Transform]        = true
     @effects[PBEffects::TransformSpecies] = target.species
     pbChangeTypes(target)
-    self.ability = target.ability
+    @ability = target.ability
     @attack  = target.attack
     @defense = target.defense
     @spatk   = target.spatk
     @spdef   = target.spdef
     @speed   = target.speed
     PBStats.eachBattleStat { |s| @stages[s] = target.stages[s] }
-    if NEW_CRITICAL_HIT_RATE_MECHANICS
+    if NEWEST_BATTLE_MECHANICS
       @effects[PBEffects::FocusEnergy] = target.effects[PBEffects::FocusEnergy]
       @effects[PBEffects::LaserFocus]  = target.effects[PBEffects::LaserFocus]
     end
     @moves.clear
     target.moves.each_with_index do |m,i|
-      @moves[i] = PokeBattle_Move.from_pokemon_move(@battle, Pokemon::Move.new(m.id))
-      @moves[i].pp       = 5
-      @moves[i].total_pp = 5
+      @moves[i] = PokeBattle_Move.pbFromPBMove(@battle,PBMove.new(m.id))
+      @moves[i].pp      = 5
+      @moves[i].totalpp = 5
     end
     @effects[PBEffects::Disable]      = 0
-    @effects[PBEffects::DisableMove]  = nil
+    @effects[PBEffects::DisableMove]  = 0
     @effects[PBEffects::WeightChange] = target.effects[PBEffects::WeightChange]
     @battle.scene.pbRefreshOne(@index)
     @battle.pbDisplay(_INTL("{1} transformed into {2}!",pbThis,target.pbThis(true)))

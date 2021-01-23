@@ -22,12 +22,13 @@ def pbPurify(pokemon,scene)
   pokemon.shadow = false
   pokemon.giveRibbon(PBRibbons::NATIONAL)
   scene.pbDisplay(_INTL("{1} opened the door to its heart!",pokemon.name))
-  old_moves = []
-  pokemon.moves.each { |m| old_moves.push(m.id) }
+  oldmoves = []
+  for i in 0...4; oldmoves.push(pokemon.moves[i].id); end
   pokemon.pbUpdateShadowMoves
-  pokemon.moves.each_with_index do |m, i|
-    next if m == old_moves[i]
-    scene.pbDisplay(_INTL("{1} regained the move {2}!", pokemon.name, m.name))
+  for i in 0...4
+    next if pokemon.moves[i].id<=0 || pokemon.moves[i].id==oldmoves[i]
+    scene.pbDisplay(_INTL("{1} regained the move \n{2}!",
+       pokemon.name,PBMoves.getName(pokemon.moves[i].id)))
   end
   pokemon.pbRecordFirstMoves
   if pokemon.savedev
@@ -36,9 +37,9 @@ def pbPurify(pokemon,scene)
     end
     pokemon.savedev = nil
   end
-  newexp = PBExperience.pbAddExperience(pokemon.exp,pokemon.savedexp||0,pokemon.growth_rate)
+  newexp = PBExperience.pbAddExperience(pokemon.exp,pokemon.savedexp||0,pokemon.growthrate)
   pokemon.savedexp = nil
-  newlevel = PBExperience.pbGetLevelFromExperience(newexp,pokemon.growth_rate)
+  newlevel = PBExperience.pbGetLevelFromExperience(newexp,pokemon.growthrate)
   curlevel = pokemon.level
   if newexp!=pokemon.exp
     scene.pbDisplay(_INTL("{1} regained {2} Exp. Points!",pokemon.name,newexp-pokemon.exp))
@@ -50,10 +51,11 @@ def pbPurify(pokemon,scene)
     pbChangeLevel(pokemon,newlevel,scene) # for convenience
     pokemon.exp = newexp
   end
-  if scene.pbConfirm(_INTL("Would you like to give a nickname to {1}?", pokemon.speciesName))
-    newname = pbEnterPokemonName(_INTL("{1}'s nickname?", pokemon.speciesName),
-                                 0, Pokemon::MAX_NAME_SIZE, "", pokemon)
-    pokemon.name = newname
+  speciesname = PBSpecies.getName(pokemon.species)
+  if scene.pbConfirm(_INTL("Would you like to give a nickname to {1}?",speciesname))
+    newname = pbEnterPokemonName(_INTL("{1}'s nickname?",speciesname),
+       0,PokeBattle_Pokemon::MAX_POKEMON_NAME_SIZE,"",pokemon)
+    pokemon.name = newname if newname!=""
   end
 end
 
@@ -62,34 +64,42 @@ def pbApplyEVGain(pokemon,ev,evgain)
   for i in 0...6
     totalev += pokemon.ev[i]
   end
-  if totalev+evgain>Pokemon::EV_LIMIT   # Can't exceed overall limit
-    evgain -= totalev+evgain-Pokemon::EV_LIMIT
+  if totalev+evgain>PokeBattle_Pokemon::EV_LIMIT   # Can't exceed overall limit
+    evgain -= totalev+evgain-PokeBattle_Pokemon::EV_LIMIT
   end
-  if pokemon.ev[ev]+evgain>Pokemon::EV_STAT_LIMIT
-    evgain -= totalev+evgain-Pokemon::EV_STAT_LIMIT
+  if pokemon.ev[ev]+evgain>PokeBattle_Pokemon::EV_STAT_LIMIT
+    evgain -= totalev+evgain-PokeBattle_Pokemon::EV_STAT_LIMIT
   end
   if evgain>0
     pokemon.ev[ev] += evgain
   end
 end
 
-def pbReplaceMoves(pkmn, new_moves)
-  return if !pkmn
-  new_moves.each do |move|
-    next if !move || pkmn.hasMove?(move)
-    # Find a move slot to put move into
-    for i in 0...Pokemon::MAX_MOVES
-      if i >= pkmn.numMoves
-        # Empty slot; add the new move there
-        pkmn.pbLearnMove(move)
-        break
-      elsif !new_moves.include?(pkmn.moves[i].id)
-        # Known move that isn't a move to be relearned; replace it
-        pkmn.moves[i].id = move
-        break
+def pbReplaceMoves(pokemon,move1,move2=0,move3=0,move4=0)
+  return if !pokemon
+  [move1,move2,move3,move4].each { |move|
+    moveIndex = -1
+    if move!=0
+      # Look for given move
+      for i in 0...4
+        moveIndex = i if pokemon.moves[i].id==move
       end
     end
-  end
+    if moveIndex==-1
+      # Look for slot to replace move
+      for i in 0...4
+        if (pokemon.moves[i].id==0 && move!=0) || (
+            pokemon.moves[i].id!=move1 &&
+            pokemon.moves[i].id!=move2 &&
+            pokemon.moves[i].id!=move3 &&
+            pokemon.moves[i].id!=move4)
+          # Replace move
+          pokemon.moves[i] = PBMove.new(move)
+          break
+        end
+      end
+    end
+  }
 end
 
 
@@ -221,7 +231,7 @@ end
 #===============================================================================
 # Pokémon class.
 #===============================================================================
-class Pokemon
+class PokeBattle_Pokemon
   attr_writer   :heartgauge
   attr_accessor :shadow
   attr_writer   :hypermode
@@ -278,57 +288,49 @@ class Pokemon
     self.heartgauge  = HEARTGAUGESIZE
     self.savedexp    = 0
     self.savedev     = [0,0,0,0,0,0]
-    self.shadowmoves = []
-    # Retrieve Shadow moveset for this Pokémon
-    shadow_moveset = pbLoadShadowMovesets[species_data.id]
-    shadow_moveset = pbLoadShadowMovesets[@species] if !shadow_moveset || shadow_moveset.length == 0
-    # Record this Pokémon's Shadow moves
-    if shadow_moveset && shadow_moveset.length > 0
-      for i in 0...[shadow_moveset.length, MAX_MOVES].min
-        self.shadowmoves[i] = shadow_moveset[i]
+    self.shadowmoves = [0,0,0,0,0,0,0,0]
+    # Retrieve shadow moves
+    shadow_movesets = pbLoadShadowMovesets
+    shadow_moves = shadow_movesets[self.fSpecies]
+    shadow_moves = shadow_movesets[self.species] if !shadow_moves || shadow_moves.length == 0
+    if shadow_moves && shadow_moves.length > 0
+      for i in 0...[4,shadow_moves.length].min
+        self.shadowmoves[i] = shadow_moves[i]
       end
-      self.shadowmovenum = shadow_moveset.length
+      self.shadowmovenum = shadow_moves.length
     else
-      # No Shadow moveset defined; just use Shadow Rush
-      self.shadowmoves[0] = :SHADOWRUSH if GameData::Move.exists?(:SHADOWRUSH)
+      # No special shadow moves
+      self.shadowmoves[0] = getConst(PBMoves,:SHADOWRUSH) || 0
       self.shadowmovenum = 1
     end
-    # Record this Pokémon's original moves
-    @moves.each_with_index { |m, i| self.shadowmoves[MAX_MOVES + i] = m.id }
-    # Update moves
+    for i in 0...4   # Save old moves
+      self.shadowmoves[4+i] = self.moves[i].id
+    end
     pbUpdateShadowMoves
   end
 
-  def pbUpdateShadowMoves(relearn_all_moves = false)
+  def pbUpdateShadowMoves(allmoves=false)
     return if !@shadowmoves
-    # Not a Shadow Pokémon (any more); relearn all its original moves
-    if !@shadow
-      if @shadowmoves.length > MAX_MOVES
-        new_moves = []
-        @shadowmoves.each_with_index { |m, i| new_moves.push(m) if m && i >= MAX_MOVES }
-        pbReplaceMoves(self, new_moves)
-      end
-      @shadowmoves = nil
-      return
-    end
-    # Is a Shadow Pokémon; ensure it knows the appropriate moves depending on its heart stage
     m = @shadowmoves
-    # Start with all Shadow moves
-    new_moves = []
-    @shadowmoves.each_with_index { |m, i| new_moves.push(m) if m && i < MAX_MOVES }
-    # Add some original moves (skipping ones in the same slot as a Shadow Move)
-    num_original_moves = (relearn_all_moves) ? 3 : [3, 3, 2, 1, 1, 0][self.heartStage]
-    if num_original_moves > 0
-      relearned_count = 0
-      @shadowmoves.each_with_index do |m, i|
-        next if !m || i < MAX_MOVES + @shadowmovenum
-        new_moves.push(m)
-        relearned_count += 1
-        break if relearned_count >= num_original_moves
+    if !@shadow
+      # No shadow moves
+      pbReplaceMoves(self,m[4],m[5],m[6],m[7])
+      @shadowmoves = nil
+    else
+      moves = []
+      relearning = (allmoves) ? 3 : [3,3,2,1,1,0][self.heartStage]
+      relearned = 0
+      # Add all Shadow moves
+      for i in 0...4; moves.push(m[i]) if m[i]!=0; end
+      # Add X regular moves
+      for i in 0...4
+        next if i<@shadowmovenum
+        if m[i+4]!=0 && relearned<relearning
+          moves.push(m[i+4]); relearned += 1
+        end
       end
+      pbReplaceMoves(self,moves[0] || 0,moves[1] || 0,moves[2] || 0,moves[3] || 0)
     end
-    # Relearn Shadow moves plus some original moves (may not change anything)
-    pbReplaceMoves(self, new_moves)
   end
 
   alias :__shadow_clone :clone
@@ -350,7 +352,10 @@ class PokeBattle_Battle
 
   def pbCanUseItemOnPokemon?(item,pkmn,battler,scene,showMessages=true)
     ret = __shadow__pbCanUseItemOnPokemon?(item,pkmn,battler,scene,showMessages)
-    if ret && pkmn.hypermode && ![:JOYSCENT, :EXCITESCENT, :VIVIDSCENT].include?(item)
+    if ret && pkmn.hypermode &&
+       !isConst?(item,PBItems,:JOYSCENT) &&
+       !isConst?(item,PBItems,:EXCITESCENT) &&
+       !isConst?(item,PBItems,:VIVIDSCENT)
       scene.pbDisplay(_INTL("This item can't be used on that Pokémon."))
       return false
     end
@@ -372,9 +377,9 @@ class PokeBattle_Battler
     __shadow__pbInitPokemon(*arg)
     # Called into battle
     if shadowPokemon?
-      if GameData::Type.exists?(:SHADOW)
-        self.type1 = :SHADOW
-        self.type2 = :SHADOW
+      if hasConst?(PBTypes,:SHADOW)
+        self.type1 = getID(PBTypes,:SHADOW)
+        self.type2 = getID(PBTypes,:SHADOW)
       end
       self.pokemon.adjustHeart(-30) if pbOwnedByPlayer?
     end
@@ -395,7 +400,7 @@ class PokeBattle_Battler
   def pbHyperMode
     return if fainted? || !shadowPokemon? || inHyperMode?
     p = self.pokemon
-    if @battle.pbRandom(p.heartgauge)<=Pokemon::HEARTGAUGESIZE/4
+    if @battle.pbRandom(p.heartgauge)<=PokeBattle_Pokemon::HEARTGAUGESIZE/4
       p.hypermode = true
       @battle.pbDisplay(_INTL("{1}'s emotions rose to a fever pitch!\nIt entered Hyper Mode!",self.pbThis))
     end
@@ -403,7 +408,7 @@ class PokeBattle_Battler
 
   def pbHyperModeObedience(move)
     return true if !inHyperMode?
-    return true if !move || move.type == :SHADOW
+    return true if !move || isConst?(move.type,PBTypes,:SHADOW)
     return rand(100)<20
   end
 end
@@ -474,21 +479,21 @@ ItemHandlers::CanUseInBattle.copy(:JOYSCENT,:EXCITESCENT,:VIVIDSCENT)
 ItemHandlers::BattleUseOnBattler.add(:JOYSCENT,proc { |item,battler,scene|
   battler.pokemon.hypermode = false
   battler.pokemon.adjustHeart(-500)
-  scene.pbDisplay(_INTL("{1} came to its senses from the {2}!",battler.pbThis,GameData::Item.get(item).name))
+  scene.pbDisplay(_INTL("{1} came to its senses from the {2}!",battler.pbThis,PBItems.getName(item)))
   next true
 })
 
 ItemHandlers::BattleUseOnBattler.add(:EXCITESCENT,proc { |item,battler,scene|
   battler.pokemon.hypermode = false
   battler.pokemon.adjustHeart(-1000)
-  scene.pbDisplay(_INTL("{1} came to its senses from the {2}!",battler.pbThis,GameData::Item.get(item).name))
+  scene.pbDisplay(_INTL("{1} came to its senses from the {2}!",battler.pbThis,PBItems.getName(item)))
   next true
 })
 
 ItemHandlers::BattleUseOnBattler.add(:VIVIDSCENT,proc { |item,battler,scene|
   battler.pokemon.hypermode = false
   battler.pokemon.adjustHeart(-2000)
-  scene.pbDisplay(_INTL("{1} came to its senses from the {2}!",battler.pbThis,GameData::Item.get(item).name))
+  scene.pbDisplay(_INTL("{1} came to its senses from the {2}!",battler.pbThis,PBItems.getName(item)))
   next true
 })
 

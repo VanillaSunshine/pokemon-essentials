@@ -28,7 +28,9 @@ end
 class AnimatedBitmap
   def initialize(file,hue=0)
     if file==nil
-      raise "Filename is nil (missing graphic)."
+      raise "Filename is nil (missing graphic)\r\n\r\n"+
+            "If you see this error in the Continue/New Game screen, you may be loading another game's save file. "+
+            "Check your project's title (\"Game > Change Title...\" in RMXP).\r\n"
     end
     if file.split(/[\\\/]/)[-1][/^\[\d+(?:,\d+)?]/]   # Starts with 1 or more digits in square brackets
       @bitmap = PngAnimatedBitmap.new(file,hue)

@@ -1,42 +1,3 @@
-#===============================================================================
-#
-#===============================================================================
-class PokemonGlobalMetadata
-  attr_writer   :purifyChamber
-  attr_accessor :seenPurifyChamber
-
-  def purifyChamber
-    @purifyChamber = PurifyChamber.new() if !@purifyChamber
-    return @purifyChamber
-  end
-end
-
-#===============================================================================
-# General purpose utilities
-#===============================================================================
-def pbDrawGauge(bitmap,rect,color,value,maxValue)
-  return if !bitmap
-  bitmap.fill_rect(rect.x,rect.y,rect.width,rect.height,Color.new(0,0,0))
-  width=(maxValue<=0) ? 0 : (rect.width-4)*value/maxValue
-  if rect.width>=4 && rect.height>=4
-    bitmap.fill_rect(rect.x+2,rect.y+2,rect.width-4,rect.height-4,Color.new(248,248,248))
-    bitmap.fill_rect(rect.x+2,rect.y+2,width,rect.height-4,color)
-  end
-end
-
-def calcPoint(x,y,distance,angle) # angle in degrees
-  angle -=(angle/360.0).floor*360 # normalize
-  angle = (angle/360.0)*(2*Math::PI) # convert to radians
-  angle = -angle % (2*Math::PI) # normalize radians
-  point = [(Math.cos(angle) * distance), (Math.sin(angle) * distance)]
-  point[0] += x
-  point[1] += y
-  return point
-end
-
-#===============================================================================
-#
-#===============================================================================
 class PurifyChamberSet
   attr_reader :facing
   attr_reader :shadow
@@ -66,9 +27,11 @@ class PurifyChamberSet
     end
   end
 
-  # Main component is tempo
-  # Boosted if center has advantage over facing Pokemon
-  # Boosted based on number of best circles
+=begin
+Main component is tempo
+Boosted if center has advantage over facing Pokemon
+Boosted based on number of best circles
+=end
   def flow
     ret=0
     return 0 if !@shadow
@@ -91,8 +54,8 @@ class PurifyChamberSet
     return (PurifyChamberSet.isSuperEffective(@list[i],@list[(i+1)%@list.length])) ? 2 : 1
   end
 
-  # Tempo refers to the type advantages of each Pokemon in a certain set in a
-  # clockwise direction. Tempo also depends on the number of Pokemon in the set
+# Tempo refers to the type advantages of each Pokemon in a certain set in a
+# clockwise direction. Tempo also depends on the number of Pokemon in the set
   def tempo
     ret=0
     for i in 0...@list.length
@@ -131,7 +94,7 @@ class PurifyChamberSet
 
   # Purify Chamber treats Normal/Normal matchup as super effective
   def self.typeAdvantage(p1,p2)
-    return true if p1 == :NORMAL && p2 == :NORMAL
+    return true if isConst?(p1,PBTypes,:NORMAL) && isConst?(p2,PBTypes,:NORMAL)
     return PBTypes.superEffective?(p1,p2)
   end
 
@@ -140,10 +103,9 @@ class PurifyChamberSet
   end
 end
 
-#===============================================================================
-#
-#===============================================================================
-class PurifyChamber
+
+
+class PurifyChamber # German: der Kryptorbis
   NUMSETS=9
   SETSIZE=4
   attr_reader :currentSet # German: das Forum
@@ -163,7 +125,7 @@ class PurifyChamber
     @currentSet=value if value>=0 && value<NUMSETS
   end
 
-  # Number of regular Pokemon in a set
+# Number of regular Pokemon in a set
   def setCount(set)
     return @sets[set].length
   end
@@ -249,13 +211,15 @@ class PurifyChamber
   end
 
   def debugAddShadow(set,species)
-    pkmn=Pokemon.new(species,1)
+    species=getID(PBSpecies,species)
+    pkmn=pbNewPkmn(species,1)
     pkmn.makeShadow
     setShadow(set,pkmn)
   end
 
   def debugAddNormal(set,species)
-    pkmn=Pokemon.new(species,1)
+    species=getID(PBSpecies,species)
+    pkmn=pbNewPkmn(species,1)
     insertAfter(set,setCount(set),pkmn)
   end
 
@@ -269,9 +233,68 @@ class PurifyChamber
   end
 end
 
-#===============================================================================
+
+
+class PokemonGlobalMetadata
+  attr_writer   :purifyChamber
+  attr_accessor :seenPurifyChamber
+
+  def purifyChamber
+    @purifyChamber = PurifyChamber.new() if !@purifyChamber
+    return @purifyChamber
+  end
+end
+
+
+
+class PurifyChamberPC
+  def shouldShow?
+    return $PokemonGlobal.seenPurifyChamber
+  end
+
+  def name
+    return _INTL("Purify Chamber")
+  end
+
+  def access
+    pbMessage(_INTL("\\se[PC access]Accessed the Purify Chamber."))
+    pbPurifyChamber()
+  end
+end
+
+
+
+PokemonPCList.registerPC(PurifyChamberPC.new)
+
+#####################
 #
-#===============================================================================
+#  General purpose utilities
+#
+
+def pbDrawGauge(bitmap,rect,color,value,maxValue)
+  return if !bitmap
+  bitmap.fill_rect(rect.x,rect.y,rect.width,rect.height,Color.new(0,0,0))
+  width=(maxValue<=0) ? 0 : (rect.width-4)*value/maxValue
+  if rect.width>=4 && rect.height>=4
+    bitmap.fill_rect(rect.x+2,rect.y+2,rect.width-4,rect.height-4,Color.new(248,248,248))
+    bitmap.fill_rect(rect.x+2,rect.y+2,width,rect.height-4,color)
+  end
+end
+
+def calcPoint(x,y,distance,angle) # angle in degrees
+  angle -=(angle/360.0).floor*360 # normalize
+  angle = (angle/360.0)*(2*Math::PI) # convert to radians
+  angle = -angle % (2*Math::PI) # normalize radians
+  point = [(Math.cos(angle) * distance), (Math.sin(angle) * distance)]
+  point[0] += x
+  point[1] += y
+  return point
+end
+
+
+#####################
+
+
 module PurifyChamberHelper
   def self.pbGetPokemon2(chamber,set,position)
     if position==0
@@ -328,20 +351,19 @@ module PurifyChamberHelper
   end
 end
 
-#===============================================================================
-#
-#===============================================================================
+
+
 class PurifyChamberScreen
   def initialize(scene)
     @scene=scene
     @chamber=$PokemonGlobal.purifyChamber
-#    for j in 0...PurifyChamber::NUMSETS
-#      @chamber.debugAddShadow(j,rand(100)+1)
-#      @chamber[j].shadow.heartgauge=0
-#      for i in 0...PurifyChamber::SETSIZE
-#        @chamber.debugAddNormal(j,rand(100)+1)
-#      end
-#    end
+#   for j in 0...PurifyChamber::NUMSETS
+#     @chamber.debugAddShadow(j,rand(100)+1)
+#     @chamber[j].shadow.heartgauge=0
+#     for i in 0...PurifyChamber::SETSIZE
+#       @chamber.debugAddNormal(j,rand(100)+1)
+#     end
+#   end
   end
 
   def pbPlace(pkmn,position)
@@ -617,9 +639,10 @@ class PurifyChamberScreen
   end
 end
 
-#===============================================================================
-#
-#===============================================================================
+
+################################################
+
+
 class Window_PurifyChamberSets < Window_DrawableCommand
   attr_reader :switching
 
@@ -653,17 +676,16 @@ class Window_PurifyChamberSets < Window_DrawableCommand
          Color.new(0,0,256),@chamber[index].tempo,PurifyChamber.maximumTempo())
     end
     if @chamber.getShadow(index)
-      pbDrawGauge(self.contents, Rect.new(rect.x+16,rect.y+18,48,8),
-                  Color.new(192,0,256), @chamber.getShadow(index).heartgauge,
-                  Pokemon::HEARTGAUGESIZE)
+      pbDrawGauge(self.contents,Rect.new(rect.x+16,rect.y+18,48,8),
+         Color.new(192,0,256),@chamber.getShadow(index).heartgauge,
+         PokeBattle_Pokemon::HEARTGAUGESIZE)
     end
     pbDrawTextPositions(self.contents,textpos)
   end
 end
 
-#===============================================================================
-#
-#===============================================================================
+
+
 class DirectFlowDiagram
   def initialize(viewport=nil)
     @points=[]
@@ -736,9 +758,8 @@ class DirectFlowDiagram
   end
 end
 
-#===============================================================================
-#
-#===============================================================================
+
+
 class FlowDiagram
   def initialize(viewport=nil)
     @points=[]
@@ -825,9 +846,8 @@ class FlowDiagram
   end
 end
 
-#===============================================================================
-#
-#===============================================================================
+
+
 class PurifyChamberSetView < SpriteWrapper
   attr_reader :set
   attr_reader :cursor
@@ -934,19 +954,19 @@ class PurifyChamberSetView < SpriteWrapper
     textpos=[]
     if pkmn
       if pkmn.type1==pkmn.type2
-        textpos.push([_INTL("{1}  Lv.{2}  {3}",pkmn.name,pkmn.level,GameData::Type.get(pkmn.type1).name),2,0,0,
+        textpos.push([_INTL("{1}  Lv.{2}  {3}",pkmn.name,pkmn.level,PBTypes.getName(pkmn.type1)),2,0,0,
            Color.new(248,248,248),Color.new(128,128,128)])
       else
-        textpos.push([_INTL("{1}  Lv.{2}  {3}/{4}",pkmn.name,pkmn.level,GameData::Type.get(pkmn.type1).name,
-           GameData::Type.get(pkmn.type2).name),2,0,0,
+        textpos.push([_INTL("{1}  Lv.{2}  {3}/{4}",pkmn.name,pkmn.level,PBTypes.getName(pkmn.type1),
+           PBTypes.getName(pkmn.type2)),2,0,0,
            Color.new(248,248,248),Color.new(128,128,128)])
       end
       textpos.push([_INTL("FLOW"),2+@info.bitmap.width/2,24,0,
          Color.new(248,248,248),Color.new(128,128,128)])
       # draw heart gauge
-      pbDrawGauge(@info.bitmap, Rect.new(@info.bitmap.width*3/4,8,@info.bitmap.width*1/4,8),
-                  Color.new(192,0,256), pkmn.heartgauge,
-                  Pokemon::HEARTGAUGESIZE)
+      pbDrawGauge(@info.bitmap,Rect.new(@info.bitmap.width*3/4,8,@info.bitmap.width*1/4,8),
+         Color.new(192,0,256),pkmn.heartgauge,
+         PokeBattle_Pokemon::HEARTGAUGESIZE)
       # draw flow gauge
       pbDrawGauge(@info.bitmap,Rect.new(@info.bitmap.width*3/4,24+8,@info.bitmap.width*1/4,8),
          Color.new(0,0,248),@chamber.chamberFlow(@set),6)
@@ -1067,9 +1087,19 @@ class PurifyChamberSetView < SpriteWrapper
   end
 end
 
-#===============================================================================
-#
-#===============================================================================
+
+
+def pbPurifyChamber
+  $PokemonGlobal.seenPurifyChamber = true
+  pbFadeOutIn {
+    scene = PurifyChamberScene.new
+    screen = PurifyChamberScreen.new(scene)
+    screen.pbStartPurify
+  }
+end
+
+
+
 class PurifyChamberScene
   def pbUpdate()
     pbUpdateSpriteHash(@sprites)
@@ -1279,38 +1309,3 @@ class PurifyChamberScene
     return pos
   end
 end
-
-#===============================================================================
-#
-#===============================================================================
-def pbPurifyChamber
-  $PokemonGlobal.seenPurifyChamber = true
-  pbFadeOutIn {
-    scene = PurifyChamberScene.new
-    screen = PurifyChamberScreen.new(scene)
-    screen.pbStartPurify
-  }
-end
-
-#===============================================================================
-#
-#===============================================================================
-class PurifyChamberPC
-  def shouldShow?
-    return $PokemonGlobal.seenPurifyChamber
-  end
-
-  def name
-    return _INTL("Purify Chamber")
-  end
-
-  def access
-    pbMessage(_INTL("\\se[PC access]Accessed the Purify Chamber."))
-    pbPurifyChamber()
-  end
-end
-
-#===============================================================================
-#
-#===============================================================================
-PokemonPCList.registerPC(PurifyChamberPC.new)

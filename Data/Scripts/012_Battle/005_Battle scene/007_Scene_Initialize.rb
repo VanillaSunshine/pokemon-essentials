@@ -93,8 +93,8 @@ class PokeBattle_Scene
 
   def pbCreateBackdropSprites
     case @battle.time
-    when 1 then time = "eve"
-    when 2 then time = "night"
+    when 1; time = "eve"
+    when 2; time = "night"
     end
     # Put everything together into backdrop, bases and message bar filenames
     backdropFilename = @battle.backdrop
@@ -152,9 +152,9 @@ class PokeBattle_Scene
 
   def pbCreateTrainerBackSprite(idxTrainer,trainerType,numTrainers=1)
     if idxTrainer==0   # Player's sprite
-      trainerFile = GameData::TrainerType.player_back_sprite_filename(trainerType)
+      trainerFile = pbPlayerSpriteBackFile(trainerType)
     else   # Partner trainer's sprite
-      trainerFile = GameData::TrainerType.back_sprite_filename(trainerType)
+      trainerFile = pbTrainerSpriteBackFile(trainerType)
     end
     spriteX, spriteY = PokeBattle_SceneConstants.pbTrainerPosition(0,idxTrainer,numTrainers)
     trainer = pbAddSprite("player_#{idxTrainer+1}",spriteX,spriteY,trainerFile,@viewport)
@@ -170,7 +170,7 @@ class PokeBattle_Scene
   end
 
   def pbCreateTrainerFrontSprite(idxTrainer,trainerType,numTrainers=1)
-    trainerFile = GameData::TrainerType.front_sprite_filename(trainerType)
+    trainerFile = pbTrainerSpriteFile(trainerType)
     spriteX, spriteY = PokeBattle_SceneConstants.pbTrainerPosition(1,idxTrainer,numTrainers)
     trainer = pbAddSprite("trainer_#{idxTrainer+1}",spriteX,spriteY,trainerFile,@viewport)
     return if !trainer.bitmap

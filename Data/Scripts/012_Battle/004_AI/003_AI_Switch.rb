@@ -17,14 +17,14 @@ class PokeBattle_AI
     # super-effective and powerful
     if !shouldSwitch && battler.turnCount>0 && skill>=PBTrainerAI.highSkill
       target = battler.pbDirectOpposing(true)
-      if !target.fainted? && target.lastMoveUsed &&
+      if !target.fainted? && target.lastMoveUsed>0 &&
          (target.level-battler.level).abs<=6
-        moveData = GameData::Move.get(target.lastMoveUsed)
-        moveType = moveData.type
+        moveData = pbGetMoveData(target.lastMoveUsed)
+        moveType = moveData[MOVE_TYPE]
         typeMod = pbCalcTypeMod(moveType,target,battler)
-        if PBTypeEffectiveness.superEffective?(typeMod) && moveData.base_damage > 50
-          switchChance = (moveData.base_damage > 70) ? 30 : 20
-          shouldSwitch = (pbAIRandom(100) < switchChance)
+        if PBTypes.superEffective?(typeMod) && moveData[MOVE_BASE_DAMAGE]>50
+          switchChance = (moveData[MOVE_BASE_DAMAGE]>70) ? 30 : 20
+          shouldSwitch = (pbAIRandom(100)<switchChance)
         end
       end
     end
@@ -107,18 +107,18 @@ class PokeBattle_AI
           end
         end
         # moveType is the type of the target's last used move
-        if moveType>=0 && PBTypeEffectiveness.ineffective?(pbCalcTypeMod(moveType,battler,battler))
+        if moveType>=0 && PBTypes.ineffective?(pbCalcTypeMod(moveType,battler,battler))
           weight = 65
           typeMod = pbCalcTypeModPokemon(pkmn,battler.pbDirectOpposing(true))
-          if PBTypeEffectiveness.superEffective?(typeMod.to_f/PBTypeEffectivenesss::NORMAL_EFFECTIVE)
+          if PBTypes.superEffective?(typeMod.to_f/PBTypeEffectivenesss::NORMAL_EFFECTIVE)
             # Greater weight if new Pokemon's type is effective against target
             weight = 85
           end
           list.unshift(i) if pbAIRandom(100)<weight   # Put this Pokemon first
-        elsif moveType>=0 && PBTypeEffectiveness.resistant?(pbCalcTypeMod(moveType,battler,battler))
+        elsif moveType>=0 && PBTypes.resistant?(pbCalcTypeMod(moveType,battler,battler))
           weight = 40
           typeMod = pbCalcTypeModPokemon(pkmn,battler.pbDirectOpposing(true))
-          if PBTypeEffectiveness.superEffective?(typeMod.to_f/PBTypeEffectivenesss::NORMAL_EFFECTIVE)
+          if PBTypes.superEffective?(typeMod.to_f/PBTypeEffectivenesss::NORMAL_EFFECTIVE)
             # Greater weight if new Pokemon's type is effective against target
             weight = 60
           end
@@ -158,14 +158,18 @@ class PokeBattle_AI
     return -1 if !enemies || enemies.length==0
     best    = -1
     bestSum = 0
+    movesData = pbLoadMovesData
     enemies.each do |i|
       pkmn = party[i]
       sum  = 0
       pkmn.moves.each do |m|
-        next if m.base_damage == 0
+        next if m.id==0
+        moveData = movesData[m.id]
+        next if moveData[MOVE_BASE_DAMAGE]==0
         @battle.battlers[idxBattler].eachOpposing do |b|
           bTypes = b.pbTypes(true)
-          sum += PBTypes.getCombinedEffectiveness(m.type, bTypes[0], bTypes[1], bTypes[2])
+          sum += PBTypes.getCombinedEffectiveness(moveData[MOVE_TYPE],
+             bTypes[0],bTypes[1],bTypes[2])
         end
       end
       if best==-1 || sum>bestSum

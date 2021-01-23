@@ -241,7 +241,7 @@ class HallOfFame_Scene
 
   def createTrainerBattler
     @sprites["trainer"]=IconSprite.new(@viewport)
-    @sprites["trainer"].setBitmap(GameData::TrainerType.front_sprite_filename($Trainer.trainertype))
+    @sprites["trainer"].setBitmap(pbTrainerSpriteFile($Trainer.trainertype))
     if !SINGLEROW
       @sprites["trainer"].x=Graphics.width-96
       @sprites["trainer"].y=160
@@ -294,7 +294,7 @@ class HallOfFame_Scene
     overlay=@sprites["overlay"].bitmap
     overlay.clear
     pokename=pokemon.name
-    speciesname=pokemon.speciesName
+    speciesname=PBSpecies.getName(pokemon.species)
     if pokemon.male?
       speciesname+="♂"
     elsif pokemon.female?
@@ -302,7 +302,7 @@ class HallOfFame_Scene
     end
     pokename+="/"+speciesname
     pokename=_INTL("Egg")+"/"+_INTL("Egg") if pokemon.egg?
-    idno=(pokemon.owner.name.empty? || pokemon.egg?) ? "?????" : sprintf("%05d",pokemon.owner.public_id)
+    idno=(pokemon.ot=="" || pokemon.egg?) ? "?????" : sprintf("%05d",pokemon.publicID)
     dexnumber=pokemon.egg? ? _INTL("No. ???") : _ISPRINTF("No. {1:03d}",pokemon.species)
     textPositions=[
        [dexnumber,32,Graphics.height-80,0,BASECOLOR,SHADOWCOLOR],
@@ -373,7 +373,7 @@ class HallOfFame_Scene
         if @battlerIndex<=@hallEntry.size
           # If it is a pokémon, write the pokémon text, wait the
           # ENTRYWAITTIME and goes to the next battler
-          GameData::Species.play_cry_from_pokemon(@hallEntry[@battlerIndex - 1])
+          pbPlayCry(@hallEntry[@battlerIndex-1])
           writePokemonData(@hallEntry[@battlerIndex-1])
           (ENTRYWAITTIME*Graphics.frame_rate/20).times do
             Graphics.update
@@ -428,7 +428,7 @@ class HallOfFame_Scene
       createBattlers(false)
     end
     # Change the pokemon
-    GameData::Species.play_cry_from_pokemon(@hallEntry[@battlerIndex])
+    pbPlayCry(@hallEntry[@battlerIndex])
     setPokemonSpritesOpacity(@battlerIndex,OPACITY)
     hallNumber=$PokemonGlobal.hallOfFameLastNumber + @hallIndex -
                $PokemonGlobal.hallOfFame.size + 1
@@ -437,9 +437,8 @@ class HallOfFame_Scene
   end
 end
 
-#===============================================================================
-#
-#===============================================================================
+
+
 class HallOfFameScreen
   def initialize(scene)
     @scene = scene
@@ -458,9 +457,8 @@ class HallOfFameScreen
   end
 end
 
-#===============================================================================
-#
-#===============================================================================
+
+
 class HallOfFamePC
   def shouldShow?
     return $PokemonGlobal.hallOfFameLastNumber>0
@@ -476,14 +474,12 @@ class HallOfFamePC
   end
 end
 
-#===============================================================================
-#
-#===============================================================================
+
+
 PokemonPCList.registerPC(HallOfFamePC.new)
 
-#===============================================================================
-#
-#===============================================================================
+
+
 class PokemonGlobalMetadata
   attr_writer :hallOfFame
   # Number necessary if hallOfFame array reach in its size limit
@@ -499,9 +495,8 @@ class PokemonGlobalMetadata
   end
 end
 
-#===============================================================================
-#
-#===============================================================================
+
+
 def pbHallOfFameEntry
   scene=HallOfFame_Scene.new
   screen=HallOfFameScreen.new(scene)

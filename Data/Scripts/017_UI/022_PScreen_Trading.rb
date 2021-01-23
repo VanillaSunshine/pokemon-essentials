@@ -1,6 +1,3 @@
-#===============================================================================
-#
-#===============================================================================
 class PokemonTrade_Scene
   def pbUpdate
     pbUpdateSpriteHash(@sprites)
@@ -44,14 +41,14 @@ class PokemonTrade_Scene
     @sprites["rsprite1"].x = Graphics.width/2
     @sprites["rsprite1"].y = 264
     @sprites["rsprite1"].z = 10
-    @pokemon.species_data.apply_metrics_to_sprite(@sprites["rsprite1"], 1)
+    pbApplyBattlerMetricsToSprite(@sprites["rsprite1"],1,@pokemon.fSpecies)
     @sprites["rsprite2"] = PokemonSprite.new(@viewport)
     @sprites["rsprite2"].setPokemonBitmap(@pokemon2,false)
     @sprites["rsprite2"].setOffset(PictureOrigin::Bottom)
     @sprites["rsprite2"].x = Graphics.width/2
     @sprites["rsprite2"].y = 264
     @sprites["rsprite2"].z = 10
-    @pokemon2.species_data.apply_metrics_to_sprite(@sprites["rsprite2"], 1)
+    pbApplyBattlerMetricsToSprite(@sprites["rsprite2"],1,@pokemon2.fSpecies)
     @sprites["rsprite2"].visible = false
     @sprites["msgwindow"] = pbCreateMessageWindow(@viewport)
     pbFadeInAndShow(@sprites)
@@ -142,8 +139,8 @@ class PokemonTrade_Scene
     # Return Pokémon's color to normal and play cry
     delay = picturePoke.totalDuration
     picturePoke.moveColor(delay,5,Color.new(31*8,22*8,30*8,0))
-    cry = GameData::Species.cry_filename_from_pokemon(@pokemon2)
-    picturePoke.setSE(delay,cry) if cry
+    cry = pbCryFile(@pokemon2)
+    picturePoke.setSE(delay,cry) if pbResolveAudioSE(cry)
     # Play animation
     pbRunPictures(
        [picturePoke,pictureBall],
@@ -158,7 +155,7 @@ class PokemonTrade_Scene
     pbDisposeSpriteHash(@sprites)
     @viewport.dispose
     newspecies = pbTradeCheckEvolution(@pokemon2,@pokemon)
-    if newspecies
+    if newspecies>0
       evo = PokemonEvolutionScene.new
       evo.pbStartScreen(@pokemon2,newspecies)
       evo.pbEvolution(false)
@@ -168,12 +165,12 @@ class PokemonTrade_Scene
 
   def pbTrade
     pbBGMStop
-    GameData::Species.play_cry_from_pokemon(@pokemon)
-    speciesname1=GameData::Species.get(@pokemon.species).name
-    speciesname2=GameData::Species.get(@pokemon2.species).name
+    pbPlayCry(@pokemon)
+    speciesname1=PBSpecies.getName(@pokemon.species)
+    speciesname2=PBSpecies.getName(@pokemon2.species)
     pbMessageDisplay(@sprites["msgwindow"],
        _ISPRINTF("{1:s}\r\nID: {2:05d}   OT: {3:s}\\wtnp[0]",
-       @pokemon.name,@pokemon.owner.public_id,@pokemon.owner.name)) { pbUpdate }
+       @pokemon.name,@pokemon.publicID,@pokemon.ot)) { pbUpdate }
     pbMessageWaitForInput(@sprites["msgwindow"],50,true) { pbUpdate }
     pbPlayDecisionSE
     pbScene1
@@ -184,32 +181,35 @@ class PokemonTrade_Scene
     pbScene2
     pbMessageDisplay(@sprites["msgwindow"],
        _ISPRINTF("{1:s}\r\nID: {2:05d}   OT: {3:s}\1",
-       @pokemon2.name,@pokemon2.owner.public_id,@pokemon2.owner.name)) { pbUpdate }
+       @pokemon2.name,@pokemon2.publicID,@pokemon2.ot)) { pbUpdate }
     pbMessageDisplay(@sprites["msgwindow"],
        _INTL("Take good care of {1}.",speciesname2)) { pbUpdate }
   end
 end
 
-#===============================================================================
-#
-#===============================================================================
+
+
 def pbStartTrade(pokemonIndex,newpoke,nickname,trainerName,trainerGender=0)
   myPokemon = $Trainer.party[pokemonIndex]
   opponent = PokeBattle_Trainer.new(trainerName,trainerGender)
   opponent.setForeignID($Trainer)
-  yourPokemon = nil
-  resetmoves = true
-  if newpoke.is_a?(Pokemon)
-    newpoke.owner = Pokemon::Owner.new_from_trainer(opponent)
+  yourPokemon = nil; resetmoves = true
+  if newpoke.is_a?(PokeBattle_Pokemon)
+    newpoke.trainerID = opponent.id
+    newpoke.ot        = opponent.name
+    newpoke.otgender  = opponent.gender
+    newpoke.language  = opponent.language
     yourPokemon = newpoke
     resetmoves = false
   else
-    species_data = GameData::Species.try_get(newpoke)
-    raise _INTL("Species does not exist ({1}).", newpoke) if !species_data
-    yourPokemon = Pokemon.new(species_data.id, myPokemon.level, opponent)
+    if newpoke.is_a?(String) || newpoke.is_a?(Symbol)
+      raise _INTL("Species does not exist ({1}).",newpoke) if !hasConst?(PBSpecies,newpoke)
+      newpoke = getID(PBSpecies,newpoke)
+    end
+    yourPokemon = pbNewPkmn(newpoke,myPokemon.level,opponent)
   end
-  yourPokemon.name          = nickname
-  yourPokemon.obtain_method = 2   # traded
+  yourPokemon.name       = nickname
+  yourPokemon.obtainMode = 2   # traded
   yourPokemon.resetMoves if resetmoves
   yourPokemon.pbRecordFirstMoves
   $Trainer.seen[yourPokemon.species]  = true
@@ -224,9 +224,13 @@ def pbStartTrade(pokemonIndex,newpoke,nickname,trainerName,trainerGender=0)
   $Trainer.party[pokemonIndex] = yourPokemon
 end
 
+#===============================================================================
+# Evolution methods
+#===============================================================================
 def pbTradeCheckEvolution(pkmn, other_pkmn)
-  return pbCheckEvolutionEx(pkmn) { |pkmn, method, parameter, new_species|
+  ret = pbCheckEvolutionEx(pkmn) { |pkmn, method, parameter, new_species|
     success = PBEvolution.call("tradeCheck", method, pkmn, parameter, other_pkmn)
     next (success) ? new_species : -1
   }
+  return ret
 end

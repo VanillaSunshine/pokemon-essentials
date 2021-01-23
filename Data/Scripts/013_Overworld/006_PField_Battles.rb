@@ -30,26 +30,26 @@ class PokemonTemp
     when "single", "1v1", "1v2", "2v1", "1v3", "3v1",
          "double", "2v2", "2v3", "3v2", "triple", "3v3"
       rules["size"] = rule.to_s.downcase
-    when "canlose"                then rules["canLose"]        = true
-    when "cannotlose"             then rules["canLose"]        = false
-    when "canrun"                 then rules["canRun"]         = true
-    when "cannotrun"              then rules["canRun"]         = false
-    when "roamerflees"            then rules["roamerFlees"]    = true
-    when "noexp"                  then rules["expGain"]        = false
-    when "nomoney"                then rules["moneyGain"]      = false
-    when "switchstyle"            then rules["switchStyle"]    = true
-    when "setstyle"               then rules["switchStyle"]    = false
-    when "anims"                  then rules["battleAnims"]    = true
-    when "noanims"                then rules["battleAnims"]    = false
-    when "terrain"                then rules["defaultTerrain"] = getID(PBBattleTerrains, var)
-    when "weather"                then rules["defaultWeather"] = getID(PBWeather, var)
-    when "environment", "environ" then rules["environment"]    = getID(PBEnvironment, var)
-    when "backdrop", "battleback" then rules["backdrop"]       = var
-    when "base"                   then rules["base"]           = var
-    when "outcome", "outcomevar"  then rules["outcomeVar"]     = var
-    when "nopartner"              then rules["noPartner"]      = true
+    when "canlose";                rules["canLose"]        = true
+    when "cannotlose";             rules["canLose"]        = false
+    when "canrun";                 rules["canRun"]         = true
+    when "cannotrun";              rules["canRun"]         = false
+    when "roamerflees";            rules["roamerFlees"]    = true
+    when "noexp";                  rules["expGain"]        = false
+    when "nomoney";                rules["moneyGain"]      = false
+    when "switchstyle";            rules["switchStyle"]    = true
+    when "setstyle";               rules["switchStyle"]    = false
+    when "anims";                  rules["battleAnims"]    = true
+    when "noanims";                rules["battleAnims"]    = false
+    when "terrain";                rules["defaultTerrain"] = getID(PBBattleTerrains,var)
+    when "weather";                rules["defaultWeather"] = getID(PBWeather,var)
+    when "environment", "environ"; rules["environment"]    = getID(PBEnvironment,var)
+    when "backdrop", "battleback"; rules["backdrop"]       = var
+    when "base";                   rules["base"]           = var
+    when "outcome", "outcomevar";  rules["outcomeVar"]     = var
+    when "nopartner";              rules["noPartner"]      = true
     else
-      raise _INTL("Battle rule \"{1}\" does not exist.", rule)
+      raise _INTL("Battle rule \"{1}\" does not exist.",rule)
     end
   end
 end
@@ -130,9 +130,9 @@ def pbPrepareBattle(battle)
     backdrop = $PokemonGlobal.nextBattleBack
   elsif $PokemonGlobal.surfing
     backdrop = "water"   # This applies wherever you are, including in caves
-  elsif GameData::MapMetadata.exists?($game_map.map_id)
-    back = GameData::MapMetadata.get($game_map.map_id).battle_background
-    backdrop = back if back && back != ""
+  else
+    back = pbGetMetadata($game_map.map_id,MetadataBattleBack)
+    backdrop = back if back && back!=""
   end
   backdrop = "indoor1" if !backdrop
   battle.backdrop = backdrop
@@ -140,26 +140,19 @@ def pbPrepareBattle(battle)
   if battleRules["base"].nil?
     case battle.environment
     when PBEnvironment::Grass, PBEnvironment::TallGrass,
-         PBEnvironment::ForestGrass
-      base = "grass"
-#    when PBEnvironment::Rock
-#      base = "rock"
-    when PBEnvironment::Sand
-      base = "sand"
-    when PBEnvironment::MovingWater, PBEnvironment::StillWater
-      base = "water"
-    when PBEnvironment::Puddle
-      base = "puddle"
-    when PBEnvironment::Ice
-      base = "ice"
+         PBEnvironment::ForestGrass;                            base = "grass"
+#    when PBEnvironment::Rock;                                   base = "rock"
+    when PBEnvironment::Sand;                                   base = "sand"
+    when PBEnvironment::MovingWater, PBEnvironment::StillWater; base = "water"
+    when PBEnvironment::Puddle;                                 base = "puddle"
+    when PBEnvironment::Ice;                                    base = "ice"
     end
   else
     base = battleRules["base"]
   end
   battle.backdropBase = base if base
   # Time of day
-  if GameData::MapMetadata.exists?($game_map.map_id) &&
-     GameData::MapMetadata.get($game_map.map_id).battle_environment == PBEnvironment::Cave
+  if pbGetMetadata($game_map.map_id,MetadataEnvironment)==PBEnvironment::Cave
     battle.time = 2   # This makes Dusk Balls work properly in caves
   elsif TIME_SHADING
     timeNow = pbGetTimeNow
@@ -173,27 +166,26 @@ end
 # Used to determine the environment in battle, and also the form of Burmy/
 # Wormadam.
 def pbGetEnvironment
-  ret = PBEnvironment::None
-  map_metadata = GameData::MapMetadata.try_get($game_map.map_id)
-  ret = map_metadata.battle_environment if map_metadata && map_metadata.battle_environment
-  if $PokemonTemp.encounterType == EncounterTypes::OldRod ||
-     $PokemonTemp.encounterType == EncounterTypes::GoodRod ||
-     $PokemonTemp.encounterType == EncounterTypes::SuperRod
+  ret = pbGetMetadata($game_map.map_id,MetadataEnvironment)
+  ret = PBEnvironment::None if !ret
+  if $PokemonTemp.encounterType==EncounterTypes::OldRod ||
+     $PokemonTemp.encounterType==EncounterTypes::GoodRod ||
+     $PokemonTemp.encounterType==EncounterTypes::SuperRod
     terrainTag = pbFacingTerrainTag
   else
     terrainTag = $game_player.terrain_tag
   end
   case terrainTag
   when PBTerrain::Grass, PBTerrain::SootGrass
-    ret = (ret == PBEnvironment::Forest) ? PBEnvironment::ForestGrass : PBEnvironment::Grass
+    ret = (ret==PBEnvironment::Forest) ? PBEnvironment::ForestGrass : PBEnvironment::Grass
   when PBTerrain::TallGrass
-    ret = (ret == PBEnvironment::Forest) ? PBEnvironment::ForestGrass : PBEnvironment::TallGrass
-  when PBTerrain::Rock                        then ret = PBEnvironment::Rock
-  when PBTerrain::Sand                        then ret = PBEnvironment::Sand
-  when PBTerrain::DeepWater, PBTerrain::Water then ret = PBEnvironment::MovingWater
-  when PBTerrain::StillWater                  then ret = PBEnvironment::StillWater
-  when PBTerrain::Puddle                      then ret = PBEnvironment::Puddle
-  when PBTerrain::Ice                         then ret = PBEnvironment::Ice
+    ret = (ret==PBEnvironment::Forest) ? PBEnvironment::ForestGrass : PBEnvironment::TallGrass
+  when PBTerrain::Rock;                        ret = PBEnvironment::Rock
+  when PBTerrain::Sand;                        ret = PBEnvironment::Sand
+  when PBTerrain::DeepWater, PBTerrain::Water; ret = PBEnvironment::MovingWater
+  when PBTerrain::StillWater;                  ret = PBEnvironment::StillWater
+  when PBTerrain::Puddle;                      ret = PBEnvironment::Puddle
+  when PBTerrain::Ice;                         ret = PBEnvironment::Ice
   end
   return ret
 end
@@ -240,14 +232,14 @@ def pbWildBattleCore(*args)
   foeParty = []
   sp = nil
   for arg in args
-    if arg.is_a?(Pokemon)
+    if arg.is_a?(PokeBattle_Pokemon)
       foeParty.push(arg)
     elsif arg.is_a?(Array)
-      species = GameData::Species.get(arg[0]).id
+      species = getID(PBSpecies,arg[0])
       pkmn = pbGenerateWildPokemon(species,arg[1])
       foeParty.push(pkmn)
     elsif sp
-      species = GameData::Species.get(sp).id
+      species = getID(PBSpecies,sp)
       pkmn = pbGenerateWildPokemon(species,arg)
       foeParty.push(pkmn)
       sp = nil
@@ -309,7 +301,7 @@ end
 #===============================================================================
 # Used when walking in tall grass, hence the additional code.
 def pbWildBattle(species, level, outcomeVar=1, canRun=true, canLose=false)
-  species = GameData::Species.get(species).id
+  species = getID(PBSpecies,species)
   # Potentially call a different pbWildBattle-type method instead (for roaming
   # Pokémon, Safari battles, Bug Contest battles)
   handled = [nil]
@@ -580,7 +572,7 @@ end
 Events.onEndBattle += proc { |_sender,e|
   decision = e[0]
   canLose  = e[1]
-  if CHECK_EVOLUTION_AFTER_ALL_BATTLES || (decision!=2 && decision!=5)   # not a loss or a draw
+  if NEWEST_BATTLE_MECHANICS || (decision!=2 && decision!=5)   # not a loss or a draw
     if $PokemonTemp.evolutionLevels
       pbEvolutionCheck($PokemonTemp.evolutionLevels)
       $PokemonTemp.evolutionLevels = nil
@@ -604,10 +596,10 @@ Events.onEndBattle += proc { |_sender,e|
 def pbEvolutionCheck(currentLevels)
   for i in 0...currentLevels.length
     pkmn = $Trainer.party[i]
-    next if !pkmn || (pkmn.hp==0 && !CHECK_EVOLUTION_FOR_FAINTED_POKEMON)
+    next if !pkmn || (pkmn.hp==0 && !NEWEST_BATTLE_MECHANICS)
     next if currentLevels[i] && pkmn.level==currentLevels[i]
     newSpecies = pbCheckEvolution(pkmn)
-    next if !newSpecies
+    next if newSpecies<=0
     evo = PokemonEvolutionScene.new
     evo.pbStartScreen(pkmn,newSpecies)
     evo.pbEvolution
@@ -618,7 +610,8 @@ end
 def pbDynamicItemList(*args)
   ret = []
   for i in 0...args.length
-    ret.push(i) if GameData::Item.exists?(args[i])
+    next if !hasConst?(PBItems,args[i])
+    ret.push(getConst(PBItems,args[i].to_sym))
   end
   return ret
 end
@@ -686,16 +679,17 @@ def pbPickup(pkmn)
   chances.each_with_index do |c,i|
     cumul += c
     next if rnd>=cumul
-    pkmn.item = items[i]
+    pkmn.setItem(items[i])
     break
   end
 end
 
 # Try to gain a Honey item after a battle if a Pokemon has the ability Honey Gather.
 def pbHoneyGather(pkmn)
-  return if !GameData::Item.exists?(:HONEY)
-  return if pkmn.egg? || !pkmn.hasAbility?(:HONEYGATHER) || pkmn.hasItem?
-  chance = 5 + ((pkmn.level - 1) / 10) * 5
-  return unless rand(100) < chance
-  pkmn.item = :HONEY
+  return if pkmn.egg? || !pkmn.hasAbility?(:HONEYGATHER)
+  return if pkmn.hasItem?
+  return if !hasConst?(PBItems,:HONEY)
+  chance = 5+((pkmn.level-1)/10)*5
+  return unless rand(100)<chance
+  pkmn.setItem(:HONEY)
 end
