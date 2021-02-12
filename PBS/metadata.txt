@@ -390,3 +390,10 @@ MapPosition = 0,12,10
 BattleBack = city
 MapPosition = 1,13,16
 Outdoor = true
+#-------------------------------
+[076]
+# Map2
+SnapEdges = true
+Bicycle = true
+Outdoor = false
+ShowArea = true

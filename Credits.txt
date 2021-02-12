@@ -1,0 +1,54 @@
+#==============================================================================#
+#                         Pokémon WhoTheFuckKnows??                            #
+#                                  Credits                                     #
+#                                                                              #
+#                     This is a non-profit fan-made game.                      #
+#                     No copyright infringements intended.                     #
+#                      Please support the official games!                      #
+#==============================================================================#
+#
+# ** General Credits **
+#-------------------------------------------------------------------------------
+#   Pokémon Essentials was created by:
+# * Flameguru
+# * Poccil (Peter O.)
+# * Maruno
+#
+#   With contributions from:
+# * AvatarMonkeyKirby, Luka S.J., Boushy, MiDas Mike, Brother1440
+#   Near Fantastica, FL., PinkMan, Genzai Kawakami, Popper, help-14, Rataime,
+#   IceGod64, SoundSpawn, Jacob O. Wobbrock, the__end, KitsuneKouta, Venom12,
+#   Lisa Anthony, Wachunga, and everyone else who helped out!
+#
+#   RPG Maker XP was created by:
+# * Enterbrain
+#
+#   Pokémon is owned by:
+# * The Pokémon Company
+# * Nintendo
+# * Affiliated with Game Freak
+#
+#===============================================================================
+#
+# ** Team **
+#-------------------------------------------------------------------------------
+# * VanillaSunshine -- Lead Creator
+# * My partner ReolSeol -- Moral Supporter, Bug Tester, Cute Boyfriend
+# * Lots of hugs to my friends who also encouraged and inspired me & my work:
+# * Aki, Andy, Ava, Ethi, Iwan, Jose, Josh, Justin, Max, Sam, Teo, and Tom
+#
+#===============================================================================
+#
+# ** Tileset **
+#-------------------------------------------------------------------------------
+#
+# * RadicalRaptr & Mr. Gela - Sideways Stairs
+#                             * https://reliccastle.com/dp-therian-episode/
+#
+#===============================================================================
+#
+# ** Resources **
+#-------------------------------------------------------------------------------
+#
+# * Marin - Enhanced Stairs
+#           * https://reliccastle.com/resources/396/
