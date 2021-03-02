@@ -2,9 +2,12 @@
 #                         Pokémon WhoTheFuckKnows??                            #
 #                                  Credits                                     #
 #                                                                              #
-#                     This is a non-profit fan-made game.                      #
+#                   This is a FREE non-profit fan-made game.                   #
 #                     No copyright infringements intended.                     #
 #                      Please support the official games!                      #
+#                                                                              #
+#                    If you made any monetary transaction                      #
+#                   to receive this game, you got scammed!                     #
 #==============================================================================#
 #
 # ** General Credits **
@@ -35,7 +38,8 @@
 # * VanillaSunshine -- Lead Creator
 # * My partner ReolSeol -- Moral Supporter, Bug Tester, Cute Boyfriend
 # * Lots of hugs to my friends who also encouraged and inspired me & my work:
-# * Aki, Andy, Ava, Ethi, Iwan, Jose, Josh, Justin, Max, Sam, Teo, and Tom
+# * Aki, Andy, Ava, Denny, Ethi, Grey, Iwan, Jen, Jose, Josh, Justin, Justin, 
+# * Karie, Max, Myles, Nick, Sam, Teo, and Tom
 #
 #===============================================================================
 #
