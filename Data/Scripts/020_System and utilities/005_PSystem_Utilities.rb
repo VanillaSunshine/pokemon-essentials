@@ -707,7 +707,7 @@ def pbTrainerName(name=nil,outfit=0)
     trname = pbEnterPlayerName(_INTL("Your name?"),0,MAX_PLAYER_NAME_SIZE)
     if trname==""
       gender = pbGetTrainerTypeGender(trainertype)
-      trname = pbSuggestTrainerName(gender)
+      trname = (gender==0) ? "Itzel" : "Atzi" #Vanilla
     end
   end
   $Trainer.name = trname
