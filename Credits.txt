@@ -43,6 +43,18 @@
 #
 #===============================================================================
 #
+# ** Artwork **
+#-------------------------------------------------------------------------------
+#
+# * aveontrainer - Kimono Girl Overworld (Female Protag - Body/Outfit)
+#                  * http://fav.me/823127696
+# * coyotango - Joltee, Flaree, and Vapee Concepts
+# * vnitti - Glacial Mountains Parallax Background
+#            * https://vnitti.itch.io/glacial-mountains-parallax-background
+#            * License - http://creativecommons.org/licenses/by/4.0/
+#
+#===============================================================================
+#
 # ** Tileset **
 #-------------------------------------------------------------------------------
 #

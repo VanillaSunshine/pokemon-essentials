@@ -38,7 +38,7 @@
 47,East,8,52,West,0
 # Route 2 (21) - Route 7 (47)
 21,East,77,47,West,0
+# Hub Town (76) - Route1 (48)
+76,South,0,48,North,11
 # Starter Town (32) - Route1 (48)
 32,North,2,48,South,0
-# Route1 (48) - Hub Town (76)
-48,16,0,76,0,36

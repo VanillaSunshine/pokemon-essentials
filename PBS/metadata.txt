@@ -410,3 +410,11 @@ ShowArea = true
 #-------------------------------
 [077]
 # Pokemon Center
+#-------------------------------
+[093]
+# Mountain
+SnapEdges = true
+#-------------------------------
+[094]
+# Mountain Top
+Outdoor = true

@@ -47,7 +47,7 @@ module PBDayNight
 # Returns true if it's night.
   def self.isNight?(time=nil)
     time = pbGetTimeNow if !time
-    return (time.hour>=20 || time.hour<5)
+    return (time.hour>20 || time.hour<5)
   end
 
 # Returns true if it's morning.
@@ -59,13 +59,13 @@ module PBDayNight
 # Returns true if it's the afternoon.
   def self.isAfternoon?(time=nil)
     time = pbGetTimeNow if !time
-    return (time.hour>=14 && time.hour<17)
+    return (time.hour>=14 && time.hour<18)
   end
 
 # Returns true if it's the evening.
   def self.isEvening?(time=nil)
     time = pbGetTimeNow if !time
-    return (time.hour>=17 && time.hour<20)
+    return (time.hour>=18 && time.hour<=20)
   end
 
 # Gets a number representing the amount of daylight (0=full night, 255=full day).
