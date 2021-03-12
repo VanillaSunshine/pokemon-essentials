@@ -46,8 +46,10 @@
 # ** Artwork **
 #-------------------------------------------------------------------------------
 #
-# * aveontrainer - Kimono Girl Overworld (Female Protag - Body/Outfit)
+# * aveontrainer - Kimono Girl Overworld (Protags Bodies/Outfits)
 #                  * http://fav.me/823127696
+#                  Kris FRLG Overworld
+#                  * http://fav.me/783948095
 # * coyotango - Joltee, Flaree, and Vapee Concepts
 # * vnitti - Glacial Mountains Parallax Background
 #            * https://vnitti.itch.io/glacial-mountains-parallax-background
@@ -70,3 +72,5 @@
 #
 # * Marin - Enhanced Stairs
 #           * https://reliccastle.com/resources/396/
+# * NuriYuri - RGSS FmodEx Extension (Music Looping)
+#              * https://www.pokecommunity.com/showthread.php?t=349496
