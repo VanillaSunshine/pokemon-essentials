@@ -74,3 +74,5 @@
 #           * https://reliccastle.com/resources/396/
 # * NuriYuri - RGSS FmodEx Extension (Music Looping)
 #              * https://www.pokecommunity.com/showthread.php?t=349496
+# * Mr. Gela - Gen 4 and 5 Trainer Sprites and PBS
+#              * https://reliccastle.com/resources/391/

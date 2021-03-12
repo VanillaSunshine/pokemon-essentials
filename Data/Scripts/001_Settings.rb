@@ -34,8 +34,8 @@ MAP_VIEW_MODE      = 1
 # * The odds of a wild Pokémon/bred egg having Pokérus (out of 65536).
 #===============================================================================
 MAXIMUM_LEVEL        = 100
-EGG_LEVEL            = 1
-SHINY_POKEMON_CHANCE = 8
+EGG_LEVEL            = 5
+SHINY_POKEMON_CHANCE = 800
 POKERUS_CHANCE       = 3
 
 #===============================================================================
@@ -58,7 +58,7 @@ TIME_SHADING = true
 #===============================================================================
 POISON_IN_FIELD         = true
 POISON_FAINT_IN_FIELD   = false
-FISHING_AUTO_HOOK       = false
+FISHING_AUTO_HOOK       = true
 DIVING_SURFACE_ANYWHERE = false
 NEW_BERRY_PLANTS        = true
 INFINITE_TMS            = true
@@ -89,7 +89,7 @@ NO_SIGNPOSTS = []
 INITIAL_MONEY        = 3000
 MAX_MONEY            = 999_999
 MAX_COINS            = 99_999
-MAX_PLAYER_NAME_SIZE = 10
+MAX_PLAYER_NAME_SIZE = 12
 
 #===============================================================================
 # * A set of arrays each containing a trainer type followed by a Global Variable
@@ -123,8 +123,8 @@ NUM_BADGES_BOOST_SPEED   = 3
 FIELD_MOVES_COUNT_BADGES = true
 BADGE_FOR_CUT            = 1
 BADGE_FOR_FLASH          = 2
-BADGE_FOR_ROCKSMASH      = 3
-BADGE_FOR_SURF           = 4
+BADGE_FOR_ROCKSMASH      = 2
+BADGE_FOR_SURF           = 3
 BADGE_FOR_FLY            = 5
 BADGE_FOR_STRENGTH       = 6
 BADGE_FOR_DIVE           = 7

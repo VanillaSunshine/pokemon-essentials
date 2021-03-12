@@ -76,32 +76,32 @@ LoseText = "You didn't have to win so convincingly!"
 Pokemon = PLUSLE,17
 Pokemon = MINUN,17
 #-------------------------------
-[COOLCOUPLE,Alice & Bob]
+[YOUNGCOUPLE,Alice & Bob]
 LoseText = "Our teamwork failed!"
 Pokemon = TURTWIG,19
 Pokemon = CHIMCHAR,19
 #-------------------------------
-[POKEMONTRAINER_Brendan,Brendan]
+[POKEMONTRAINER_RIVALM,Brendan]
 Pokemon = MARSHTOMP,19
 #-------------------------------
-[SWIMMER2_F,Ariel]
+[SWIMMER_F2,Ariel]
 LoseText = "Washed out!"
 Pokemon = STARYU,15
 Pokemon = GOLDEEN,11
 #-------------------------------
-[RIVAL1,Blue]
+[POKEMONTRAINER_RIVALM,Blue]
 LoseText = "Not too shabby."
 Pokemon = PIDGEOTTO,17
 Pokemon = RATTATA,15
 Pokemon = BULBASAUR,18
 #-------------------------------
-[RIVAL1,Blue,1]
+[POKEMONTRAINER_RIVALM,Blue,1]
 LoseText = "Not too shabby."
 Pokemon = PIDGEOTTO,17
 Pokemon = RATTATA,15
 Pokemon = CHARMANDER,18
 #-------------------------------
-[RIVAL1,Blue,2]
+[POKEMONTRAINER_RIVALM,Blue,2]
 LoseText = "Not too shabby."
 Pokemon = PIDGEOTTO,17
 Pokemon = RATTATA,15
