@@ -247,14 +247,16 @@ end
 
 # Plays a sound effect that plays when a decision is confirmed or a choice is made.
 def pbPlayDecisionSE
-  if $data_system && $data_system.respond_to?("decision_se") &&
-     $data_system.decision_se && $data_system.decision_se.name!=""
-    pbSEPlay($data_system.decision_se)
-  elsif $data_system && $data_system.respond_to?("sounds") &&
-     $data_system.sounds && $data_system.sounds[1] && $data_system.sounds[1].name!=""
-    pbSEPlay($data_system.sounds[1])
-  elsif FileTest.audio_exist?("Audio/SE/GUI sel decision")
-    pbSEPlay("GUI sel decision",80)
+  unless $game_switches && $game_switches[81]
+    if $data_system && $data_system.respond_to?("decision_se") &&
+      $data_system.decision_se && $data_system.decision_se.name!=""
+      pbSEPlay($data_system.decision_se)
+    elsif $data_system && $data_system.respond_to?("sounds") &&
+      $data_system.sounds && $data_system.sounds[1] && $data_system.sounds[1].name!=""
+      pbSEPlay($data_system.sounds[1])
+    elsif FileTest.audio_exist?("Audio/SE/GUI sel decision")
+      pbSEPlay("GUI sel decision",80)
+    end
   end
 end
 
