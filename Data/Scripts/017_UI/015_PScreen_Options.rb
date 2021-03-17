@@ -14,19 +14,19 @@ class PokemonSystem
   attr_writer   :textinput
 
   def initialize
-    @textspeed   = 1     # Text speed (0=slow, 1=normal, 2=fast)
-    @battlescene = 0     # Battle effects (animations) (0=on, 1=off)
+    @textspeed   = 2     # Text speed (0=slow, 1=normal, 2=fast)
+    @battlescene = 1     # Battle effects (animations) (0=on, 1=off)
     @battlestyle = 0     # Battle style (0=switch, 1=set)
     @frame       = 0     # Default window frame (see also $TextFrames)
     @textskin    = 0     # Speech frame
-    @font        = 0     # Font (see also $VersionStyles)
+    @font        = 3     # Font (see also $VersionStyles)
     @screensize  = (SCREEN_ZOOM.floor).to_i   # 0=half size, 1=full size, 2=double size
     @border      = 0     # Screen border (0=off, 1=on)
     @language    = 0     # Language (see also LANGUAGES in script PokemonSystem)
     @runstyle    = 0     # Run key functionality (0=hold to run, 1=toggle auto-run)
-    @bgmvolume   = 100   # Volume of background music and ME
-    @sevolume    = 100   # Volume of sound effects
-    @textinput   = 0     # Text input mode (0=cursor, 1=keyboard)
+    @bgmvolume   = 20    # Volume of background music and ME
+    @sevolume    = 20    # Volume of sound effects
+    @textinput   = 1     # Text input mode (0=cursor, 1=keyboard)
   end
 
   def textskin;  return @textskin || 0;    end
@@ -478,7 +478,8 @@ class PokemonOption_Scene
              ObjectSpace.each_object(TilemapLoader) { |o| o.updateClass if !o.disposed? }
            end
          }
-       ),
+       )
+=begin
        EnumOption.new(_INTL("Screen Border"),[_INTL("Off"),_INTL("On")],
          proc { $PokemonSystem.border },
          proc { |value|
@@ -490,6 +491,7 @@ class PokemonOption_Scene
            end
          }
        )
+=end
     ]
     @PokemonOptions = pbAddOnOptions(@PokemonOptions)
     @sprites["option"] = Window_PokemonOption.new(@PokemonOptions,0,
