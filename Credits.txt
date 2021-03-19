@@ -46,7 +46,7 @@
 # ** Artwork **
 #-------------------------------------------------------------------------------
 #
-# * aveontrainer - Kimono Girl Overworld (Protags Bodies/Outfits)
+# * aveontrainer - Kimono Girl Overworld (Protags' Overworld Bodies/Outfits)
 #                  * http://fav.me/823127696
 #                  Kris FRLG Overworld
 #                  * http://fav.me/783948095
@@ -54,6 +54,8 @@
 # * vnitti - Glacial Mountains Parallax Background
 #            * https://vnitti.itch.io/glacial-mountains-parallax-background
 #            * License - http://creativecommons.org/licenses/by/4.0/
+# * cazwolf - Raikou, Entei, and Suicune Orbs
+#             * https://cazwolf.itch.io/caz-pixel-rtp-replacement
 #
 #===============================================================================
 #

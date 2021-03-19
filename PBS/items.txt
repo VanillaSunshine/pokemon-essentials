@@ -646,3 +646,7 @@
 631,NSOLARIZER,N-Solarizer,N-Solarizers,8,0,"A machine to fuse Necrozma, which needs light, and Solgaleo.",5,0,6,
 632,NLUNARIZER,N-Lunarizer,N-Lunarizers,8,0,"A machine to fuse Necrozma, which needs light, and Lunala.",5,0,6,
 633,MEGARING,Mega Ring,Mega Rings,8,0,"This ring contains an untold power that somehow enables Pokémon carrying Mega Stones to Mega Evolve.",0,0,6,
+#-------------------------------
+634,RAIKOUORB,Raikou's Orb,Raikou's Orbs,8,0,"The Orb from Raikou's shrine. Its static surface shocks you when you touch it.",0,0,0,
+635,ENTEIORB,Entei's Orb,Entei's Orbs,8,0,"The Orb from Entei's shrine. Its warm surface burns your fingertips when you touch it.",0,0,0,
+636,SUICUNEORB,Suicune's Orb,Suicune's Orbs,8,0,"The Orb from Suicune's shrine. Its chilly surface makes your skin stick to it.",0,0,0

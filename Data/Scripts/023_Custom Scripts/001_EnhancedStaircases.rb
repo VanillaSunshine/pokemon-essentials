@@ -85,10 +85,10 @@ class DependentEvents
         passable=tile && $MapFactory.isPassable?(tile[0],tile[1],tile[2],follower)
         if !passable && $PokemonGlobal.bridge>0
           passable = PBTerrain.isBridge?($MapFactory.getTerrainTag(tile[0],tile[1],tile[2]))
-        elsif passable && !$PokemonGlobal.surfing && $PokemonGlobal.bridge==0       
+        elsif passable && !$PokemonGlobal.surfing && $PokemonGlobal.bridge==0
           passable=!PBTerrain.isWater?($MapFactory.getTerrainTag(tile[0],tile[1],tile[2]))
         end
-        if i==0 && !passable && tile && 
+        if i==0 && !passable && tile &&
            $MapFactory.getTerrainTag(tile[0],tile[1],tile[2],true)==PBTerrain::Ledge &&
            $PokemonGlobal.bridge==0
           # If the tile isn't passable and the tile is a ledge,
@@ -226,7 +226,7 @@ class Game_Event
     return if on_stair?
     return stair_cett(x, y)
   end
-  
+
   alias stair_ceta check_event_trigger_auto
   def check_event_trigger_auto
     if $game_map && $game_map.events
@@ -244,7 +244,7 @@ class Game_Event
     return if on_stair? || $game_player.on_stair?
     return stair_ceta
   end
-  
+
   alias stair_start start
   def start
     if is_stair_event?
@@ -253,11 +253,11 @@ class Game_Event
       stair_start
     end
   end
-  
+
   def is_stair_event?
     return self.name == "Slope"
   end
-  
+
   def get_stair_data
     return if !is_stair_event?
     return if !@list
@@ -291,19 +291,19 @@ class Game_Player
     return if on_stair?
     return stair_cetc(x, y)
   end
-  
+
   alias stair_ceth check_event_trigger_here
   def check_event_trigger_here(triggers)
     return if on_stair?
     return stair_ceth(triggers)
   end
-  
+
   alias stair_cett check_event_trigger_there
   def check_event_trigger_there(triggers)
     return if on_stair?
     return stair_cett(triggers)
   end
-  
+
   def move_down(turn_enabled = true)
     turn_down if turn_enabled
     if passable?(@x, @y, 2)
@@ -322,7 +322,7 @@ class Game_Player
       end
     end
   end
-  
+
   def move_up(turn_enabled = true)
     turn_up if turn_enabled
     if passable?(@x, @y, 8)
@@ -355,25 +355,25 @@ class Game_Map
     end
     return true
   end
-  
+
   alias stair_scroll_down scroll_down
   def scroll_down(distance)
     return if $DisableScrollCounter == 1
     return stair_scroll_down(distance)
   end
-  
+
   alias stair_scroll_left scroll_left
   def scroll_left(distance)
     return if $DisableScrollCounter == 1
     return stair_scroll_left(distance)
   end
-  
+
   alias stair_scroll_right scroll_right
   def scroll_right(distance)
     return if $DisableScrollCounter == 1
     return stair_scroll_right(distance)
   end
-  
+
   alias stair_scroll_up scroll_up
   def scroll_up(distance)
     return if $DisableScrollCounter == 1
@@ -389,12 +389,12 @@ class Game_Character
   attr_accessor :stair_y_position
   attr_accessor :stair_y_height
   attr_accessor :stair_begin_offset
-  
+
   def on_stair?
     return @stair_begin_offset && @stair_start_x && @stair_start_y &&
            @stair_end_x && @stair_end_y && @stair_y_position && @stair_y_height
   end
-  
+
   def on_middle_of_stair?
     return false if !on_stair?
     if @stair_start_x > @stair_end_x
@@ -402,10 +402,10 @@ class Game_Character
           @real_x > (@stair_end_x * Game_Map::TILE_WIDTH + @stair_begin_offset) * Game_Map::X_SUBPIXELS
     else
       return @real_x > (@stair_start_x * Game_Map::TILE_WIDTH + @stair_begin_offset) * Game_Map::X_SUBPIXELS &&
-          @real_x < (@stair_end_x * Game_Map::TILE_WIDTH - @stair_begin_offset) * Game_Map::X_SUBPIXELS      
+          @real_x < (@stair_end_x * Game_Map::TILE_WIDTH - @stair_begin_offset) * Game_Map::X_SUBPIXELS
     end
   end
-  
+
   def slope(x, y, ypos = 0, yheight = 1, begin_offset = 0)
     @stair_start_x = self.is_a?(Game_Player) ? @x : (@real_x / Game_Map::REAL_RES_X).round
     @stair_start_y = self.is_a?(Game_Player) ? @y : (@real_y / Game_Map::REAL_RES_Y).round
@@ -417,7 +417,7 @@ class Game_Character
     @stair_start_y += ypos
     @stair_end_y += ypos
   end
-  
+
   def clear_stair_data
     @stair_begin_offset = nil
     @stair_start_x = nil
@@ -428,7 +428,7 @@ class Game_Character
     @stair_y_height = nil
     @stair_last_increment = nil
   end
-  
+
   def move_down(turn_enabled = true)
     turn_down if turn_enabled
     if passable?(@x, @y, 2)
@@ -440,7 +440,7 @@ class Game_Character
       check_event_trigger_touch(@x, @y+1)
     end
   end
-  
+
   def move_up(turn_enabled = true)
     turn_up if turn_enabled
     if passable?(@x, @y, 8)
@@ -452,7 +452,7 @@ class Game_Character
       check_event_trigger_touch(@x, @y-1)
     end
   end
-  
+
   def moving_vertically(value)
     if on_stair?
       @stair_y_position -= value
@@ -461,7 +461,7 @@ class Game_Character
       end
     end
   end
-  
+
   alias stair_update update
   def update
     if self == $game_player && SMOOTH_SCROLLING && on_stair?
@@ -479,7 +479,7 @@ class Game_Character
       @old_move_speed = nil
     end
   end
-  
+
   alias stair_update_pattern update_pattern
   def update_pattern
     if self == $game_player && $DisableScrollCounter == 2
@@ -487,7 +487,7 @@ class Game_Character
     end
     stair_update_pattern
   end
-  
+
   alias stair_moving? moving?
   def moving?
     if self == $game_player && $DisableScrollCounter == 1
@@ -502,9 +502,10 @@ class Game_Character
     end
     return stair_moving?
   end
- 
+
   alias stair_screen_y screen_y
   def screen_y
+    ret = screen_y_ground # new - required for v18.1 jump mechanic
     real_y = @real_y
     if on_stair?
       if @real_x / Game_Map::X_SUBPIXELS.to_f <= @stair_start_x * Game_Map::TILE_WIDTH &&
@@ -572,11 +573,24 @@ class Game_Character
       else
         clear_stair_data
       end
+    # elsif jumping?
+      # n = (@jump_count - @jump_peak).abs
+      # return (real_y - self.map.display_y + 3) / 4 + Game_Map::TILE_HEIGHT -
+          # (@jump_peak * @jump_peak - n * n) / 2
+    # end
+    # Edit start
     elsif jumping?
-      n = (@jump_count - @jump_peak).abs
-      return (real_y - self.map.display_y + 3) / 4 + Game_Map::TILE_HEIGHT -
-          (@jump_peak * @jump_peak - n * n) / 2
+      if @jump_count > 0
+        jump_fraction = ((@jump_count * jump_speed_real / Game_Map::REAL_RES_X) - 0.5).abs   # 0.5 to 0 to 0.5
+      else
+        jump_fraction = ((@jump_distance_left / @jump_distance) - 0.5).abs   # 0.5 to 0 to 0.5
+      end
+      ret += @jump_peak * (4 * jump_fraction**2 - 1)
     end
+    if jumping?
+        return ret
+    end
+    #
     return (real_y - self.map.display_y + 3) / 4 + (Game_Map::TILE_HEIGHT)
   end
 end
