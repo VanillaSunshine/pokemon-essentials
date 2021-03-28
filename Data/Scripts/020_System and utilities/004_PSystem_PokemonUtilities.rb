@@ -67,6 +67,7 @@ end
 #===============================================================================
 def pbAddPokemon(pokemon,level=nil,seeform=true)
   return if !pokemon
+  unless $game_switches && $game_switches[83]
   if pbBoxesFull?
     pbMessage(_INTL("There's no more room for Pokémon!\1"))
     pbMessage(_INTL("The Pokémon Boxes are full and can't accept any more!"))
@@ -81,6 +82,25 @@ def pbAddPokemon(pokemon,level=nil,seeform=true)
   pbNicknameAndStore(pokemon)
   pbSeenForm(pokemon) if seeform
   return true
+end
+if pbBoxesFull?
+  pbMessage(_INTL("There's no more room for Pokémon!\1"))
+  pbMessage(_INTL("The Pokémon Boxes are full and can't accept any more!"))
+  return false
+end
+pokemon = getID(PBSpecies,pokemon)
+if pokemon.is_a?(Integer) && level.is_a?(Integer)
+  pokemon = pbNewPkmn(pokemon,level)
+end
+speciesname = PBSpecies.getName(pokemon.species)
+pbMessage(_INTL("{1} obtained {2}!\\me[Pkmn get]\\wtnp[80]\1",$Trainer.name,speciesname))
+pbSeenForm(pokemon) if seeform
+if $Trainer.party.length<6
+  $Trainer.party[$Trainer.party.length] = pokemon
+else
+  $PokemonStorage.pbStoreCaught(pokemon)
+end
+return true
 end
 
 def pbAddPokemonSilent(pokemon,level=nil,seeform=true)

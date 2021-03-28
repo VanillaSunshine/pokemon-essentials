@@ -56,7 +56,32 @@
 #            * License - http://creativecommons.org/licenses/by/4.0/
 # * cazwolf - Raikou, Entei, and Suicune Orbs
 #             * https://cazwolf.itch.io/caz-pixel-rtp-replacement
+# * Dreadwing93 - Unova Backsprites
+#                 * http://fav.me/607291844
 #
+#===============================================================================
+#
+# ** Gen 6 and Gen 7 Pokémon Sprites **
+#-------------------------------------------------------------------------------
+#
+# * Zerokid - Pokémon Zero (Compiling the original resources)
+# * Mashirosakura - Gen 6-8 PBS Files and Sprites Resource (Source I Used)
+#                   * https://reliccastle.com/resources/383/
+# * Smogon XY Sprite Project - Gen 6 Front Sprites
+#                              * https://www.smogon.com/forums/threads/3486712/
+# * Smogon SM Sprite Project - Gen 7 Front Sprites & Silvally Front Sprites
+#                              * https://www.smogon.com/forums/threads/3577711/
+# * Amethyst, Jan, Zumi, Bazaro, Koyo, Smeargletail, Alex, Noscium, Leparagon, 
+#   N-kin, fishbowlsoul90, princess-phoenix, DatLopunnyTho, Conyjams, kaji atsu,
+#   The cynical poet, LuigiPlayer, Falgaia, Pikafan2000, Lord-Myre, MillaLya -
+#             Various Gen 7 Sprites
+#             * https://www.rebornevo.com/forums/topic/24410-gen-7-sprite-pack/
+#             * https://www.pokecommunity.com/showthread.php?t=406404
+# * leparagon - Gen 7 DS-Style GBA Sprites (Only Back Sprites Used)
+#               * http://fav.me/658344305
+# * MrDollSteak - Gen 6 DS-Style 64x64 Sprites (Only Back Sprites Used)
+#                 * https://www.pokecommunity.com/showthread.php?t=314422
+#                 * Detailed credits featured in the above thread.
 #===============================================================================
 #
 # ** Tileset **
