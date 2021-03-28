@@ -1,0 +1,45 @@
+#==============================================================================#
+#                         Pokémon Herald of Legends                            #
+#                                Niji Edition                                  #
+#                                                                              #
+#                             Important Changes                                #
+#                                                                              #
+#==============================================================================#
+#
+# ** Evolution Changes **
+#-------------------------------------------------------------------------------
+#
+#     *  Politoed     -     Use Dawn Stone on Poliwhirl
+#     *  Alakazam     -     Raise Kadabra to Level 30
+#     *  Machamp      -     Raise Machoke to Level 40
+#     *  Golem        -     Raise Graveler to Level 35
+#     *  Slowking     -     Use Shiny Stone on Slowpoke
+#     *  Gengar       -     Raise Haunter to Level 40
+#     *  Steelix      -     Level up Onix while holding Metal Coat
+#     *  Rhyperior    -     Level up Rhydon while holding Protector
+#     *  Kingdra      -     Level up Seadra while holding Dragon Scale
+#     *  Scizor       -     Level up Scyther while holding Metal Coat
+#     *  Electivire   -     Level up Electabuzz while holding Electirizer
+#     *  Magmortar    -     Level up Magmar while holding Magmarizer
+#     *  Porygon2     -     Level up Porygon while holding Upgrade
+#     *  PorygonZ     -     Level up Porygon2 while holding Dubious Disc
+#     *  Dusknoir     -     Level up Dusclops while holding Reaper Cloth
+#     *  Huntail      -     Level up Clampearl while holding Deep Sea Tooth
+#     *  Gorebyss     -     Level up Clampearl while holding Deep Sea Scale
+#     *  Gigalith     -     Raise Boldore to Level 35
+#     *  Conkeldurr   -     Raise Gurdurr to Level 35
+#     *  Escavalier   -     Use Dawn Stone on Karrablast
+#     *  Accelgor     -     Use Dawn Stone on Shelmet
+#     *  Aromatisse   -     Level up Spritzee while holding Sachet
+#     *  Slurpuff     -     Level up Swirlix while holding Whipped Dream
+#     *  Trevenant    -     Raise Phantump to Level 40
+#     *  Gourgeist    -     Raise Pumpkaboo to Level 40
+#
+#===============================================================================
+#
+# ** Stat Changes **
+#-------------------------------------------------------------------------------
+#
+#
+#
+#===============================================================================
