@@ -35,6 +35,8 @@
 #     *  Trevenant    -     Raise Phantump to Level 40
 #     *  Gourgeist    -     Raise Pumpkaboo to Level 40
 #
+#     *  Lampent      -     Raise Litwick to Level 32
+#
 #===============================================================================
 #
 # ** Stat Changes **
