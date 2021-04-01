@@ -199,7 +199,7 @@ REGION_MAP_EXTRAS = [
 # * The number of boxes in Pokémon storage.
 #===============================================================================
 def pbStorageCreator
-  return _INTL("Bill")
+  return _INTL("Celio")
 end
 NUM_STORAGE_BOXES = 30
 
@@ -227,10 +227,11 @@ NUM_STORAGE_BOXES = 30
 #      reduced by 1, thus making the first listed species have a species number
 #      of 0 (e.g. Victini in Unova's Dex).
 #===============================================================================
-USE_CURRENT_REGION_DEX = false
+USE_CURRENT_REGION_DEX = true
 def pbDexNames; return [
   [_INTL("Kanto Pokédex"), 0],
   [_INTL("Johto Pokédex"), 1],
+  [_INTL("Niji Pokédex"), 2],
   _INTL("National Pokédex")
 ]; end
 DEX_SHOWS_ALL_FORMS = false

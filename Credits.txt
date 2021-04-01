@@ -1,5 +1,6 @@
 #==============================================================================#
-#                         Pokémon WhoTheFuckKnows??                            #
+#                         Pokémon Herald of Legends                            #
+#                                Niji Edition                                  #
 #                                  Credits                                     #
 #                                                                              #
 #                   This is a FREE non-profit fan-made game.                   #

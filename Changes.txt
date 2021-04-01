@@ -34,7 +34,6 @@
 #     *  Slurpuff     -     Level up Swirlix while holding Whipped Dream
 #     *  Trevenant    -     Raise Phantump to Level 40
 #     *  Gourgeist    -     Raise Pumpkaboo to Level 40
-#
 #     *  Lampent      -     Raise Litwick to Level 32
 #
 #===============================================================================
