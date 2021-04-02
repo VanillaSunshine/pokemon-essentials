@@ -17,7 +17,7 @@ class Bitmap
     alias mkxp_draw_text draw_text
     def draw_text(x, y, width, height, text, align = 0)
       height = text_size(text).height
-      y+=2 # Offsets all text by 2 pixels downwards
+      y+=4 # Offsets all text by 2 pixels downwards
       mkxp_draw_text(x, y, width, height, text, align)
     end
   end
