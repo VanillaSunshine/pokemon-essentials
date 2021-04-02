@@ -30,9 +30,11 @@ end
 
 def mainFunctionDebug
   begin
-    getCurrentProcess = Win32API.new("kernel32.dll", "GetCurrentProcess", "", "l")
-    setPriorityClass  = Win32API.new("kernel32.dll", "SetPriorityClass", %w(l i), "")
-    setPriorityClass.call(getCurrentProcess.call(), 32768)   # "Above normal" priority class
+    if !mkxp?
+      getCurrentProcess = Win32API.new("kernel32.dll", "GetCurrentProcess", "", "l")
+      setPriorityClass  = Win32API.new("kernel32.dll", "SetPriorityClass", %w(l i), "")
+      setPriorityClass.call(getCurrentProcess.call(), 32768)   # "Above normal" priority class
+    end
     $data_animations    = pbLoadRxData("Data/Animations")
     $data_tilesets      = pbLoadRxData("Data/Tilesets")
     $data_common_events = pbLoadRxData("Data/CommonEvents")

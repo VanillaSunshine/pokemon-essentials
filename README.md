@@ -1,4 +1,13 @@
-# Pok�mon Essentials
+# Pokémon Splice
+
+Pokemon Splice Wiki: https://pokemonsplice.fandom.com/wiki/Pokemon_Splice
+Download Thundaga games: https://sites.google.com/view/thundagas-games/home
+
+
+
+Info below is based on the main branch of Pokemon Essentials by Maruno.
+
+# Pokémon Essentials
 
 Based on Essentials v18.
 
