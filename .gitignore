@@ -1,11 +1,8 @@
-# Audio and Graphics folders
-Audio/
-Graphics/
-
 # Data folder, but not Data/Scripts folder
 Data/*
 !Data/Scripts.rxdata
 !Data/Scripts/
+Data/Scripts/005_Map renderer/001_Tilemap_XP.rb
 
 # Files in the main project folder
 Game.ini

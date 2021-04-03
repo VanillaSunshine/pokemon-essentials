@@ -200,63 +200,6 @@ module Graphics
   end
 
   @@deletefailed = false
-
-  def self.snap_to_bitmap(resize=true)
-    tempPath = ENV["TEMP"]+"\\tempscreen.bmp"
-    if safeExists?(tempPath) && @@deletefailed
-      begin
-        File.delete(tempPath)
-        @@deletefailed = false
-      rescue Errno::EACCES
-        @@deletefailed = true
-        return nil
-      end
-    end
-    if safeExists?("./rubyscreen.dll")
-      takescreen = Win32API.new("rubyscreen.dll","TakeScreenshot","p","i")
-      takescreen.call(tempPath)
-    end
-    bm = nil
-    if safeExists?(tempPath)
-      bm = Bitmap.new(tempPath)
-      begin
-        File.delete(tempPath)
-        @@deletefailed = false
-      rescue Errno::EACCES
-        @@deletefailed = true
-      end
-    end
-    bm.asOpaque if bm && bm.get_pixel(0,0).alpha==0
-    if resize
-      if bm && $ResizeOffsetX && $ResizeOffsetY && ($ResizeOffsetX!=0 || $ResizeOffsetY!=0)
-        tmpbitmap = Bitmap.new(Graphics.width*$ResizeFactor,Graphics.height*$ResizeFactor)
-        tmpbitmap.blt(0,0,bm,Rect.new(
-           $ResizeOffsetX*$ResizeFactor,$ResizeOffsetY*$ResizeFactor,tmpbitmap.width,tmpbitmap.height))
-        bm.dispose
-        bm = tmpbitmap
-      end
-      if bm && (bm.width!=Graphics.width || bm.height!=Graphics.height)
-        newbitmap = Bitmap.new(Graphics.width,Graphics.height)
-        newbitmap.stretch_blt(newbitmap.rect,bm,Rect.new(0,0,bm.width,bm.height))
-        bm.dispose
-        bm = newbitmap
-      end
-    else
-      # Thise code is used only for taking screenshots with F8.
-      # Doesn't crop out the screen border, doesn't normalise to 1x zoom.
-      # Fixes screenshots being 1 pixel too tall.
-      fullw = (Graphics.width+$ResizeOffsetX*2)*$ResizeFactor
-      fullh = (Graphics.height+$ResizeOffsetY*2)*$ResizeFactor
-      if bm && $ResizeOffsetX && $ResizeOffsetY && $ResizeFactor &&
-         (bm.width!=fullw || bm.height!=fullh)
-        tmpbitmap = Bitmap.new(fullw,fullh)
-        tmpbitmap.blt(0,0,bm,Rect.new(0,0,fullw,fullh))
-        bm.dispose
-        bm = tmpbitmap
-      end
-    end
-    return bm
-  end
 end
 
 

@@ -33,10 +33,6 @@ if !respond_to?("pbSetResizeFactor")
   $ResizeOffsetX   = 0
   $ResizeOffsetY   = 0
   $ResizeFactorSet = false
-
-  module Graphics
-    def self.snap_to_bitmap; return nil; end
-  end
 end
 
 
