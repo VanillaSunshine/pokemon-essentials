@@ -2,7 +2,22 @@
 #                              Pokémon Essentials                              #
 #                                 Version 18.1                                 #
 #==============================================================================#
-
+#
+# MKXP settings
+#
+# This is the title of the game window. The compiler resets it, and I don't feel
+# like adding a whole JSON parser to read mkxp's config file (mkxp.json).
+# So just set the value here.
+WINDOW_TITLE = "Pokémon Niji"
+#
+# A number between 1 and infinity that determines how fast move animations are
+# updated. 1 means every single frame, X means once every X frames.
+BATTLE_ANIMATION_DELAY = 3
+#
+# If true, left and right will also act as Page Up/Page Down in command lists.
+# If false, their behavior is just left/right.
+LEFT_AND_RIGHT_PAGE_UP_DOWN = false
+#
 #===============================================================================
 # * The default screen width (at a zoom of 1.0; size is half this at zoom 0.5).
 # * The default screen height (at a zoom of 1.0).

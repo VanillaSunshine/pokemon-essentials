@@ -1,0 +1,19 @@
+
+=================
+
+[Sun Apr 04 13:36:20 +0900 2021]
+[Pokémon Essentials version 18.1.dev]
+Exception: RuntimeError
+Message: Unsupported Font
+
+Backtrace:
+002_MessageConfig.rb:390:in `pbSetSystemFont'
+015_PScreen_Options.rb:540:in `pbOptions'
+015_PScreen_Options.rb:520:in `loop'
+015_PScreen_Options.rb:520:in `pbOptions'
+002_MessageConfig.rb:680:in `pbActivateWindow'
+015_PScreen_Options.rb:519:in `pbOptions'
+015_PScreen_Options.rb:580:in `pbStartScreen'
+013_PScreen_Load.rb:452:in `pbStartLoadScreen'
+002_MessageConfig.rb:562:in `pbFadeOutIn'
+013_PScreen_Load.rb:449:in `pbStartLoadScreen'

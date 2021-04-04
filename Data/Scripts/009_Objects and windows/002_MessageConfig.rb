@@ -391,7 +391,7 @@ def pbSetSystemFont(bitmap)
   elsif fontname == "Pokemon Emerald Small" || fontname == "Power Green Small"
     bitmap.font.size = 25
   else
-    bitmap.font.size = 31
+    bitmap.font.size = 71
   end
 end
 

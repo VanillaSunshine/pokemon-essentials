@@ -98,9 +98,16 @@
 # ** Resources **
 #-------------------------------------------------------------------------------
 #
-# * Marin - Enhanced Stairs
+# * Roza - MKXP-Z (Based on MKXP by Ancurio et al.)
+#          * https://github.com/orochii/mkxp-z
+# * Marin - MKXP-Z Support
+#           Enhanced Stairs
 #           * https://reliccastle.com/resources/396/
 # * NuriYuri - RGSS FmodEx Extension (Music Looping)
 #              * https://www.pokecommunity.com/showthread.php?t=349496
 # * Mr. Gela - Gen 4 and 5 Trainer Sprites and PBS
 #              * https://reliccastle.com/resources/391/
+# * Pokémon Splice - MKXP Compatibility Script (for fixing font rendering)
+#                    * https://reliccastle.com/splice/
+#
+#===============================================================================
