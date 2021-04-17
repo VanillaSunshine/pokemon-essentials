@@ -17,3 +17,60 @@ Backtrace:
 013_PScreen_Load.rb:452:in `pbStartLoadScreen'
 002_MessageConfig.rb:562:in `pbFadeOutIn'
 013_PScreen_Load.rb:449:in `pbStartLoadScreen'
+
+=================
+
+[Mon Apr 05 13:04:10 +0900 2021]
+[Pokémon Essentials version 18.1.dev]
+Exception: NoMethodError
+Message: undefined method `*' for PokemonSummary_Scene:Class
+
+Backtrace:
+006_PScreen_Summary.rb:682:in `drawPageFour'
+006_PScreen_Summary.rb:679:in `each'
+006_PScreen_Summary.rb:679:in `drawPageFour'
+006_PScreen_Summary.rb:352:in `drawPage'
+006_PScreen_Summary.rb:1296:in `pbScene'
+006_PScreen_Summary.rb:1234:in `loop'
+006_PScreen_Summary.rb:1234:in `pbScene'
+006_PScreen_Summary.rb:1313:in `pbStartScreen'
+005_PScreen_Party.rb:639:in `pbSummary'
+005_PScreen_Party.rb:1217:in `pbPokemonScreen'
+
+=================
+
+[Mon Apr 05 13:05:07 +0900 2021]
+[Pokémon Essentials version 18.1.dev]
+Exception: NameError
+Message: undefined local variable or method `type_number' for #<PokemonSummary_Scene:0xa517550>
+
+Backtrace:
+006_PScreen_Summary.rb:682:in `drawPageFour'
+006_PScreen_Summary.rb:679:in `each'
+006_PScreen_Summary.rb:679:in `drawPageFour'
+006_PScreen_Summary.rb:352:in `drawPage'
+006_PScreen_Summary.rb:1296:in `pbScene'
+006_PScreen_Summary.rb:1234:in `loop'
+006_PScreen_Summary.rb:1234:in `pbScene'
+006_PScreen_Summary.rb:1313:in `pbStartScreen'
+005_PScreen_Party.rb:639:in `pbSummary'
+005_PScreen_Party.rb:1217:in `pbPokemonScreen'
+
+=================
+
+[Mon Apr 05 13:05:34 +0900 2021]
+[Pokémon Essentials version 18.1.dev]
+Exception: NoMethodError
+Message: undefined method `*' for PokemonSummary_Scene:Class
+
+Backtrace:
+006_PScreen_Summary.rb:682:in `drawPageFour'
+006_PScreen_Summary.rb:679:in `each'
+006_PScreen_Summary.rb:679:in `drawPageFour'
+006_PScreen_Summary.rb:352:in `drawPage'
+006_PScreen_Summary.rb:1296:in `pbScene'
+006_PScreen_Summary.rb:1234:in `loop'
+006_PScreen_Summary.rb:1234:in `pbScene'
+006_PScreen_Summary.rb:1313:in `pbStartScreen'
+005_PScreen_Party.rb:639:in `pbSummary'
+005_PScreen_Party.rb:1217:in `pbPokemonScreen'

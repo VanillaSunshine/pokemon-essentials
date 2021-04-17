@@ -15,8 +15,8 @@ module MessageConfig
   # 2 = Pause cursor is displayed at lower middle side
   CURSORMODE      = 1
   FontSubstitutes = {
-     "Power Red and Blue"  => "Pokemon RS",
-     "Power Red and Green" => "Pokemon FireLeaf",
+     #Power Red and Blue"  => "Pokemon RS",
+     #Power Red and Green" => "Pokemon FireLeaf",
      "Power Green"         => "Pokemon Emerald",
      "Power Green Narrow"  => "Pokemon Emerald Narrow",
      "Power Green Small"   => "Pokemon Emerald Small",
@@ -384,27 +384,49 @@ end
 
 # Sets a bitmap's font to the system font.
 def pbSetSystemFont(bitmap)
-  fontname = MessageConfig.pbGetSystemFontName
-  bitmap.font.name = fontname
-  if fontname == "Pokemon FireLeaf" || fontname == "Power Red and Green"
-    bitmap.font.size = 29
-  elsif fontname == "Pokemon Emerald Small" || fontname == "Power Green Small"
-    bitmap.font.size = 25
+  if mkxp?
+      fontname = MessageConfig.pbGetSystemFontName
+      bitmap.font.name = fontname
+      if fontname == "Pokemon FireLeaf" || fontname == "Power Red and Green"
+        bitmap.font.size = 29
+      elsif fontname == "Pokemon Emerald Small" || fontname == "Power Green Small"
+        bitmap.font.size = 71
+      else
+        bitmap.font.size = 71
+      end
   else
-    bitmap.font.size = 71
+      fontname = MessageConfig.pbGetSystemFontName
+    bitmap.font.name = fontname
+    if fontname == "Pokemon FireLeaf" || fontname == "Power Red and Green"
+      bitmap.font.size = 29
+    elsif fontname == "Pokemon Emerald Small" || fontname == "Power Green Small"
+      bitmap.font.size = 25
+    else
+      bitmap.font.size = 31
+    end
   end
 end
 
 # Sets a bitmap's font to the system small font.
 def pbSetSmallFont(bitmap)
-  bitmap.font.name = pbSmallFontName
-  bitmap.font.size = 25
+  if mkxp?
+    bitmap.font.name = pbSmallFontName
+    bitmap.font.size = 71
+  else
+    bitmap.font.name = pbSmallFontName
+    bitmap.font.size = 25
+  end
 end
 
 # Sets a bitmap's font to the system narrow font.
 def pbSetNarrowFont(bitmap)
-  bitmap.font.name = pbNarrowFontName
-  bitmap.font.size = 31
+  if mkxp?
+    bitmap.font.name = pbNarrowFontName
+    bitmap.font.size = 31
+  else
+    bitmap.font.name = pbNarrowFontName
+    bitmap.font.size = 31
+  end
 end
 
 #===============================================================================

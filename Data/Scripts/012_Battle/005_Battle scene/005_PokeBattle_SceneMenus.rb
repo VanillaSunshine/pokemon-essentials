@@ -254,7 +254,7 @@ class FightMenuDisplay < BattleMenuBase
       # Create overlay for buttons (shows move names)
       @overlay = BitmapSprite.new(Graphics.width,Graphics.height-self.y,viewport)
       @overlay.x = self.x
-      @overlay.y = self.y
+      @overlay.y = self.y+4
       pbSetNarrowFont(@overlay.bitmap)
       addSprite("overlay",@overlay)
       # Create overlay for selected move's info (shows move's PP)
